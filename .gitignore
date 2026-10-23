@@ -1,0 +1,18 @@
+# dependências e build
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# SEGREDOS: nunca vão para o GitHub (exceto o exemplo)
+.env*
+!.env.example
+
+# dados locais do modo simulação (usuários de teste)
+.data/
+
+# sistema
+.DS_Store
+Thumbs.db
+npm-debug.log*
