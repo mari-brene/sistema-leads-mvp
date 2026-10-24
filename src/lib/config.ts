@@ -85,4 +85,9 @@ export const config = {
   get supabaseSecretKey(): string {
     return (process.env.SUPABASE_SECRET_KEY ?? "").trim();
   },
+
+  /** Senha que protege as rotas /api/cron/* (só o agendador do GitHub conhece). */
+  get cronSecret(): string {
+    return (process.env.CRON_SECRET ?? "").trim();
+  },
 };

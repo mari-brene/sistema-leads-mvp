@@ -90,6 +90,6 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Auditoria",
     icon: "audit",
     phase: 7,
-    description: "Registro de tudo o que o sistema fez e página de erros.",
+    description: "Registro do agendador automático e dos erros.",
   },
 ];

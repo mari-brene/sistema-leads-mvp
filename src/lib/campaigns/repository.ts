@@ -48,6 +48,8 @@ export interface CampaignsRepository {
   removeCampaign(userId: string, id: string): Promise<Simple>;
   usage(userId: string): Promise<Usage>;
   runBatch(userId: string, sender: WhatsAppSender): Promise<BatchResult>;
+  /** Quem tem alguma campanha em andamento (usado pelo agendador). */
+  listActiveUserIds(): Promise<string[]>;
 }
 
 type FileData = {
@@ -180,6 +182,11 @@ export function createCampaignsRepository({ leads, now = () => new Date() }: Rep
         limit: slice.settings.dailyLimit,
         window: checkWindow(slice.settings, current),
       };
+    },
+
+    async listActiveUserIds() {
+      const data = await readAll();
+      return [...new Set(data.campaigns.filter((campaign) => campaign.status === "em_andamento").map((campaign) => campaign.userId))];
     },
 
     runBatch(userId, sender) {

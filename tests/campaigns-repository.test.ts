@@ -188,4 +188,12 @@ describe("campanhas de ponta a ponta (arquivos locais, envio simulado)", () => {
     expect((await mockSender.send({ to: "+5547999990000", text: "x", templateName: "t" })).ok).toBe(false);
     expect((await mockSender.send({ to: "+5547999990001", text: "x", templateName: "t" })).ok).toBe(true);
   });
+
+  it("lista só quem tem campanha em andamento (para o agendador)", async () => {
+    expect(await repo.listActiveUserIds()).toEqual([]);
+    await leadsRepo.create("u1", input("Ana Lima", "+5547999990001"));
+    await leadsRepo.create("u2", input("Caio Reis", "+5547999990002"));
+    await startedCampaign("u1");
+    expect(await repo.listActiveUserIds()).toEqual(["u1"]);
+  });
 });
