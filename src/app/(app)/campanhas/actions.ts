@@ -14,11 +14,11 @@ function text(formData: FormData, name: string): string {
 
 // ---------- Modelos de mensagem ----------
 
-export type TemplateFormState = { error?: string; saved?: boolean; values?: { name: string; body: string } } | undefined;
+export type TemplateFormState = { error?: string; saved?: boolean; values?: { name: string; body: string; metaName: string } } | undefined;
 
 export async function addTemplateAction(_prev: TemplateFormState, formData: FormData): Promise<TemplateFormState> {
   const user = await requireUser();
-  const values = { name: text(formData, "name"), body: text(formData, "body") };
+  const values = { name: text(formData, "name"), body: text(formData, "body"), metaName: text(formData, "metaName") };
 
   const result = await getCampaignsRepository().addTemplate(user.id, values);
   if (!result.ok) return { error: result.error, values };
@@ -27,10 +27,10 @@ export async function addTemplateAction(_prev: TemplateFormState, formData: Form
   return { saved: true };
 }
 
-/** SIMULAÇÃO da aprovação da Meta. Só existe no modo simulação. */
+/** Marca o modelo como aprovado (na simulação é um atalho; no WhatsApp real, você confirma o que a Meta já aprovou). */
 export async function approveTemplateAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  const repo = getCampaignsRepository(); // no modo real isto lança erro: a aprovação é da Meta
+  const repo = getCampaignsRepository();
   await repo.approveTemplate(user.id, text(formData, "id"));
   revalidatePath("/campanhas/modelos");
 }

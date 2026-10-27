@@ -33,7 +33,14 @@ export type Thread = {
 
 export type ReceiveResult =
   | { ok: false; error: string }
-  | { ok: true; outcome: "ia_respondeu" | "para_voce" | "saiu" };
+  | { ok: true; outcome: "ia_respondeu" | "para_voce" | "saiu" | "duplicada" };
+
+export type ReceiveOptions = {
+  /** Identificador da mensagem na Meta: se já foi processada, é ignorada. */
+  externalId?: string;
+  /** A conversa vai direto para você, com este motivo (ex.: mensagem com foto ou áudio). */
+  forceHumanReason?: string;
+};
 
 export interface InboxRepository {
   getSettings(userId: string): Promise<InboxSettings>;
@@ -41,7 +48,7 @@ export interface InboxRepository {
   listConversations(userId: string): Promise<ConversationRow[]>;
   getThread(userId: string, leadId: string): Promise<Thread | null>;
   /** Uma mensagem do contato chegou (na simulação, digitada por você; na fase 8, vem do webhook da Meta). */
-  receive(userId: string, leadId: string, text: string): Promise<ReceiveResult>;
+  receive(userId: string, leadId: string, text: string, opts?: ReceiveOptions): Promise<ReceiveResult>;
   sendHuman(userId: string, leadId: string, text: string): Promise<Simple>;
   takeOver(userId: string, leadId: string): Promise<Simple>;
   handBack(userId: string, leadId: string): Promise<Simple>;
@@ -210,7 +217,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       };
     },
 
-    async receive(userId, leadId, rawText) {
+    async receive(userId, leadId, rawText, opts) {
       const checked = validateMessageText(rawText);
       if (!checked.ok) return checked;
       const text = checked.text;
@@ -226,6 +233,9 @@ export function createInboxRepository(deps: Deps): InboxRepository {
 
       // ETAPA A (dentro da fila): guarda a mensagem recebida e decide o que fazer.
       const plan = await edit((data) => {
+        if (opts?.externalId && data.messages.some((m) => m.userId === userId && m.externalId === opts.externalId)) {
+          return { duplicate: true as const };
+        }
         let convo = findConversation(data, userId, leadId);
         if (!convo) {
           convo = newConversation(userId, leadId, nowIso);
@@ -237,7 +247,15 @@ export function createInboxRepository(deps: Deps): InboxRepository {
           .slice(-HISTORY_TURNS)
           .map((m) => ({ from: m.author === "contato" ? "contato" : "assistente", text: m.text }));
 
-        pushMessage(data, { userId, leadId, direction: "in", author: "contato", text, at: nowIso });
+        pushMessage(data, {
+          userId,
+          leadId,
+          direction: "in",
+          author: "contato",
+          text,
+          at: nowIso,
+          ...(opts?.externalId ? { externalId: opts.externalId } : {}),
+        });
         convo.lastInboundAt = nowIso;
         convo.lastMessageAt = nowIso;
         convo.lastPreview = preview(text);
@@ -249,6 +267,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
           conversation: convo,
           aiUsedToday: data.aiUsage[usageKey] ?? 0,
           hasPhone: true,
+          ...(opts?.forceHumanReason ? { forceHumanReason: opts.forceHumanReason } : {}),
         });
 
         if (decision.kind === "ai") {
@@ -263,8 +282,9 @@ export function createInboxRepository(deps: Deps): InboxRepository {
           convo.needsHuman = false;
           convo.handoffReason = "Contato pediu para sair da lista.";
         }
-        return { decision, history };
+        return { duplicate: false as const, decision, history };
       });
+      if (plan.duplicate) return { ok: true, outcome: "duplicada" };
 
       // O histórico do lead (e a etapa do Kanban) são atualizados fora da nossa fila.
       await deps.leads.recordInboundMessage(userId, leadId, text);
@@ -273,7 +293,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       if (plan.decision.kind === "optout") {
         await deps.leads.registerOptOut(userId, leadId);
         const confirmation = "Tudo certo! Você não receberá mais mensagens de marketing nossas. Obrigado e até mais.";
-        const sent = await deps.sender().send({ to: lead.phone, text: confirmation, templateName: "confirmacao-saida" });
+        const sent = await deps.sender().send({ to: lead.phone, text: confirmation, templateName: "confirmacao-saida", purpose: "service" });
         await edit((data) => {
           const convo = findConversation(data, userId, leadId);
           if (!convo) return;
@@ -316,7 +336,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       ]);
       if (!freshLead || freshLead.optOut || !freshLead.phone || !stillAi) return { ok: true, outcome: "para_voce" };
 
-      const sent = await deps.sender().send({ to: freshLead.phone, text: result.text, templateName: "resposta-ia" });
+      const sent = await deps.sender().send({ to: freshLead.phone, text: result.text, templateName: "resposta-ia", purpose: "service" });
       await edit((data) => {
         const convo = findConversation(data, userId, leadId);
         if (!convo) return;
@@ -354,7 +374,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
         };
       }
 
-      const sent = await deps.sender().send({ to: lead.phone, text: checked.text, templateName: "resposta-manual" });
+      const sent = await deps.sender().send({ to: lead.phone, text: checked.text, templateName: "resposta-manual", purpose: "service" });
       return edit((fresh) => {
         const current = findConversation(fresh, userId, leadId);
         if (!current) return { ok: false, error: "Conversa não encontrada." } as const;

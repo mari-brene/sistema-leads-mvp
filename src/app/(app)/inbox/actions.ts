@@ -44,7 +44,7 @@ export async function handBackAction(formData: FormData): Promise<void> {
 /** SIMULAÇÃO: finge que o contato mandou uma mensagem. Só existe no modo simulação. */
 export async function simulateInboundAction(_prev: InboxFormState, formData: FormData): Promise<InboxFormState> {
   const user = await requireUser();
-  if (!config.mockMode) return { error: "A simulação só funciona com MOCK_MODE=true." };
+  if (!config.simulatedWhatsApp) return { error: "A simulação só funciona no modo simulação (o WhatsApp real recebe as mensagens pelo webhook)." };
   const leadId = text(formData, "leadId");
   const result = await getInboxRepository().receive(user.id, leadId, text(formData, "message"));
   refresh(leadId);
@@ -53,6 +53,7 @@ export async function simulateInboundAction(_prev: InboxFormState, formData: For
     ia_respondeu: "A IA respondeu.",
     para_voce: "A conversa ficou para você responder.",
     saiu: "Pedido de saída registrado.",
+    duplicada: "Mensagem repetida: ignorada.",
   } as const;
   return { ok: labels[result.outcome] };
 }

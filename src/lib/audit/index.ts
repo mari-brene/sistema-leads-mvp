@@ -6,7 +6,7 @@ import { readJson, writeJson } from "@/lib/storage";
  * Só guarda CONTAGENS e avisos. Nunca nomes, telefones, mensagens ou chaves.
  */
 
-export type AuditKind = "agendador" | "erro";
+export type AuditKind = "agendador" | "erro" | "whatsapp";
 
 export type AuditEntry = {
   id: string;

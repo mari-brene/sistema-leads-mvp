@@ -90,4 +90,43 @@ export const config = {
   get cronSecret(): string {
     return (process.env.CRON_SECRET ?? "").trim();
   },
+
+  // ---------- WhatsApp (fase 8) ----------
+
+  /** "mock" (simulação, padrão) ou "cloud" (WhatsApp Cloud API oficial da Meta). */
+  get whatsappProvider(): "mock" | "cloud" {
+    return process.env.WHATSAPP_PROVIDER === "cloud" ? "cloud" : "mock";
+  },
+  /** true = as mensagens NÃO saem de verdade (aparece o aviso "Modo simulação"). */
+  get simulatedWhatsApp(): boolean {
+    return this.mockMode || this.whatsappProvider !== "cloud";
+  },
+  get whatsappToken(): string {
+    return (process.env.WHATSAPP_TOKEN ?? "").trim();
+  },
+  get whatsappPhoneNumberId(): string {
+    return (process.env.WHATSAPP_PHONE_NUMBER_ID ?? "").trim();
+  },
+  /** Versão da API da Meta (a Meta lança versões novas de tempos em tempos). */
+  get whatsappApiVersion(): string {
+    const value = (process.env.WHATSAPP_API_VERSION ?? "").trim();
+    return /^v\d+\.\d+$/.test(value) ? value : "v23.0";
+  },
+  /** Idioma dos modelos aprovados na Meta (o modelo de teste "hello_world" é en_US). */
+  get whatsappTemplateLanguage(): string {
+    const value = (process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? "").trim();
+    return /^[a-z]{2}(_[A-Z]{2})?$/.test(value) ? value : "pt_BR";
+  },
+  /** Texto combinado com a Meta para confirmar o endereço do webhook. */
+  get whatsappVerifyToken(): string {
+    return (process.env.WHATSAPP_VERIFY_TOKEN ?? "").trim();
+  },
+  /** "App secret" do app da Meta: serve para conferir que as mensagens recebidas vieram mesmo da Meta. */
+  get metaAppSecret(): string {
+    return (process.env.META_APP_SECRET ?? "").trim();
+  },
+  /** Quem recebe os contatos novos que escrevem primeiro (o "UID" do seu usuário no Supabase). */
+  get whatsappOwnerId(): string {
+    return (process.env.WHATSAPP_OWNER_ID ?? "").trim();
+  },
 };

@@ -1,7 +1,7 @@
 import type { Ctx } from "@/lib/leads/logic";
 import { isStageId, type Lead, type StageId } from "@/lib/leads/types";
 import { CAMPAIGN_STAGES, selectAudience } from "./audience";
-import { renderTemplate, validateFooter, validateTemplate, withFooter } from "./templates";
+import { renderTemplate, templateParams, validateFooter, validateMetaName, validateTemplate, withFooter } from "./templates";
 import { checkWindow, localTime } from "./time";
 import {
   BATCH_SIZE,
@@ -60,8 +60,13 @@ export function validateSettings(input: SettingsInput): { ok: true; value: Setti
 
 // ---------- Modelos ----------
 
-export function addTemplate(slice: Slice, userId: string, input: { name: string; body: string }, ctx: Ctx): Res<{ template: Template }> {
-  const error = validateTemplate(input.name, input.body);
+export function addTemplate(
+  slice: Slice,
+  userId: string,
+  input: { name: string; body: string; metaName?: string },
+  ctx: Ctx,
+): Res<{ template: Template }> {
+  const error = validateTemplate(input.name, input.body) ?? validateMetaName(input.metaName ?? "");
   if (error) return { ok: false, error };
 
   const name = input.name.trim();
@@ -74,13 +79,14 @@ export function addTemplate(slice: Slice, userId: string, input: { name: string;
     userId,
     name,
     body: input.body.trim(),
+    ...(input.metaName?.trim() ? { metaName: input.metaName.trim() } : {}),
     status: "pendente",
     createdAt: ctx.now,
   };
   return { ok: true, slice: { ...slice, templates: [...slice.templates, template] }, template };
 }
 
-/** SIMULAÇÃO: marca como aprovado. Na fase do WhatsApp real, quem aprova é a Meta. */
+/** Marca como aprovado. Na simulação é só um atalho; no WhatsApp real, você confirma o que a Meta já aprovou. */
 export function approveTemplate(slice: Slice, id: string): Res {
   const current = slice.templates.find((item) => item.id === id);
   if (!current) return { ok: false, error: "Modelo não encontrado." };
@@ -258,12 +264,27 @@ export function sentToday(messages: CampaignMessage[], now: Date): number {
 
 // ---------- Rodada de envio (lote) ----------
 
-export type PlannedSend = { messageId: string; campaignId: string; leadId: string; to: string; text: string; templateName: string };
+export type PlannedSend = {
+  messageId: string;
+  campaignId: string;
+  leadId: string;
+  to: string;
+  text: string;
+  templateName: string;
+  /** Modelo aprovado na Meta + valores das variáveis (null = modelo sem nome na Meta). */
+  template: { name: string; params: string[] } | null;
+};
 export type PlannedSkip = { messageId: string; reason: string };
 
 export type BatchPlan =
   | { ok: false; error: string }
   | { ok: true; sends: PlannedSend[]; skips: PlannedSkip[]; remainingToday: number };
+
+function metaTemplate(slice: Slice, campaign: Campaign, lead: Lead | undefined): PlannedSend["template"] {
+  const metaName = slice.templates.find((item) => item.id === campaign.templateId)?.metaName;
+  if (!metaName || !lead) return null;
+  return { name: metaName, params: templateParams(campaign.body, lead) };
+}
 
 /** Motivo para NÃO enviar a este contato agora, ou null se pode. Roda no momento do envio, não só na criação. */
 export function blockReason(lead: Lead | undefined, message: CampaignMessage): string | null {
@@ -314,6 +335,7 @@ export function planBatch(slice: Slice, leads: Lead[], now: Date): BatchPlan {
         to: message.phone,
         text: message.text,
         templateName: campaign.templateName,
+        template: metaTemplate(slice, campaign, byId.get(message.leadId)),
       });
     }
     if (sends.length >= limit) break;

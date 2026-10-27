@@ -19,6 +19,8 @@ export type InboxMessage = {
   author: MessageAuthor;
   text: string;
   at: string;
+  /** Identificador da mensagem na Meta (serve para ignorar a mesma mensagem entregue duas vezes). */
+  externalId?: string;
   /** Só nas mensagens enviadas por nós. */
   status?: "enviada" | "falhou";
   error?: string;

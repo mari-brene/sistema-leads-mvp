@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPhone, normalizePhone } from "@/lib/phone";
+import { formatPhone, normalizePhone, phoneVariants } from "@/lib/phone";
 
 describe("normalizePhone (E.164)", () => {
   it("aceita celular brasileiro em vários formatos", () => {
@@ -67,5 +67,15 @@ describe("formatPhone", () => {
     expect(formatPhone("+12125551234")).toBe("+12125551234");
     expect(formatPhone(null)).toBe("—");
     expect(formatPhone("")).toBe("—");
+  });
+});
+
+describe("phoneVariants", () => {
+  it("celular BR devolve com e sem o 9 extra", () => {
+    expect(phoneVariants("+5547999991234").sort()).toEqual(["+554799991234", "+5547999991234"].sort());
+    expect(phoneVariants("+554799991234").sort()).toEqual(["+554799991234", "+5547999991234"].sort());
+  });
+  it("outros países ficam só com o próprio número", () => {
+    expect(phoneVariants("+14155550100")).toEqual(["+14155550100"]);
   });
 });

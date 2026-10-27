@@ -103,7 +103,7 @@ export default async function ThreadPage({ params }: PageProps) {
         )}
       </section>
 
-      {config.mockMode && (
+      {config.simulatedWhatsApp && (
         <section className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-5">
           <h2 className="text-sm font-semibold text-slate-800">Simulação</h2>
           <p className="mb-3 text-xs text-slate-500">Só aparece no modo simulação: finge que o contato escreveu.</p>

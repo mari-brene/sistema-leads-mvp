@@ -28,6 +28,16 @@ export function TemplateForm() {
         hint="Só para você se organizar. O contato não vê."
         defaultValue={state?.values?.name ?? ""}
       />
+      <Field
+        label="Nome do modelo na Meta (para o WhatsApp real)"
+        name="metaName"
+        type="text"
+        maxLength={200}
+        autoComplete="off"
+        placeholder="Ex.: oferta_outubro"
+        hint="Exatamente como está no painel da Meta (minúsculas, sem acento, com _). Pode deixar vazio na simulação. No teste da Meta use hello_world."
+        defaultValue={state?.values?.metaName ?? ""}
+      />
       <TextAreaField
         label="Texto da mensagem *"
         name="body"

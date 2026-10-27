@@ -59,3 +59,17 @@ export function formatPhone(e164: string | null | undefined): string {
   }
   return e164;
 }
+
+/**
+ * O WhatsApp às vezes entrega números brasileiros SEM o "9" extra do celular (ex.: 554799991234
+ * em vez de 5547999991234). Esta função devolve as duas formas, para achar o lead de qualquer jeito.
+ */
+export function phoneVariants(e164: string): string[] {
+  const variants = new Set<string>([e164]);
+  const match = /^\+55(\d{2})(9?)(\d{8})$/.exec(e164);
+  if (match) {
+    const [, area, nine, rest] = match;
+    variants.add(nine ? `+55${area}${rest}` : `+55${area}9${rest}`);
+  }
+  return [...variants];
+}

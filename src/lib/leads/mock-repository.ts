@@ -11,6 +11,8 @@ import type { CreateLeadInput, Lead, LeadResult, UpdateLeadInput } from "./types
 export interface LeadsRepository {
   list(userId: string): Promise<Lead[]>;
   get(userId: string, id: string): Promise<Lead | null>;
+  /** Procura leads de QUALQUER usuário por telefone (E.164). Só o recebimento do WhatsApp usa isto. */
+  findByPhone(phones: string[]): Promise<Lead[]>;
   create(userId: string, input: CreateLeadInput): Promise<LeadResult>;
   update(userId: string, id: string, input: UpdateLeadInput): Promise<LeadResult>;
   move(userId: string, id: string, stage: string, index: number): Promise<LeadResult>;
@@ -77,6 +79,12 @@ export const mockLeadsRepository: LeadsRepository = {
   async get(userId, id) {
     const all = await readAll();
     return all.find((lead) => lead.userId === userId && lead.id === id) ?? null;
+  },
+
+  async findByPhone(phones) {
+    if (phones.length === 0) return [];
+    const all = await readAll();
+    return all.filter((lead) => lead.phone !== null && phones.includes(lead.phone));
   },
 
   create: (userId, input) => mutate(userId, (mine, ctx) => logic.createLead(mine, userId, input, ctx)),

@@ -44,6 +44,36 @@ export function renderTemplate(body: string, lead: { name: string; company: stri
   });
 }
 
+/** Nome do modelo na Meta: minúsculas, números e "_" (ex.: oferta_outubro). Vazio é aceito (só a simulação funciona sem ele). */
+export function validateMetaName(value: string): string | null {
+  const name = value.trim();
+  if (!name) return null;
+  if (!/^[a-z0-9_]{1,200}$/.test(name)) {
+    return 'O nome do modelo na Meta só pode ter letras minúsculas sem acento, números e "_" (ex.: oferta_outubro).';
+  }
+  return null;
+}
+
+/** Valor seguro para variável de modelo da Meta: uma linha só, sem excesso de espaços. */
+function metaParam(value: string): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, 60) || "-";
+}
+
+/**
+ * Valores das variáveis, NA ORDEM em que aparecem no texto.
+ * O modelo aprovado na Meta precisa ter o mesmo número de variáveis ({{1}}, {{2}}...) na mesma ordem.
+ */
+export function templateParams(body: string, lead: { name: string; company: string }): string[] {
+  const firstName = lead.name.trim().split(/\s+/)[0] || "tudo bem";
+  const company = lead.company.trim() || "sua empresa";
+  const params: string[] = [];
+  for (const match of body.matchAll(VARIABLE)) {
+    const variable = String(match[1]).toLowerCase();
+    params.push(metaParam(variable === "nome" ? firstName : variable === "empresa" ? company : ""));
+  }
+  return params;
+}
+
 /** Coloca a frase de saída no fim da mensagem. */
 export function withFooter(text: string, footer: string): string {
   return `${text}\n\n${footer.trim()}`;

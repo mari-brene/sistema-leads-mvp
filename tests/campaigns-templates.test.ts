@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderTemplate, validateFooter, validateTemplate, withFooter } from "@/lib/campaigns/templates";
+import { renderTemplate, templateParams, validateFooter, validateMetaName, validateTemplate, withFooter } from "@/lib/campaigns/templates";
 import { checkWindow, describeWindow, localTime } from "@/lib/campaigns/time";
 import { DEFAULT_SETTINGS } from "@/lib/campaigns/types";
 
@@ -86,5 +86,21 @@ describe("horário de envio (fuso de São Paulo)", () => {
     const settings = { ...DEFAULT_SETTINGS, windowStart: 0, windowEnd: 24 };
     expect(checkWindow(settings, new Date("2026-10-17T02:30:00.000Z"))).toEqual({ open: true }); // 23:30 de sexta
     expect(describeWindow(settings)).toContain("00:00 às 00:00");
+  });
+});
+
+describe("modelo da Meta", () => {
+  it("variáveis saem na ordem em que aparecem, com primeiro nome", () => {
+    expect(templateParams("Oi {{nome}}, a {{empresa}} tem oferta, {{nome}}!", { name: "Ana Maria Lima", company: "Loja X" })).toEqual(["Ana", "Loja X", "Ana"]);
+  });
+  it("valores vazios ou com quebra de linha ficam seguros", () => {
+    expect(templateParams("{{empresa}}", { name: "Ana", company: "  " })).toEqual(["sua empresa"]);
+    expect(templateParams("{{nome}}", { name: "Ana\n\nLima", company: "" })).toEqual(["Ana"]);
+  });
+  it("nome do modelo na Meta: só minúsculas, números e _", () => {
+    expect(validateMetaName("")).toBeNull();
+    expect(validateMetaName("oferta_outubro")).toBeNull();
+    expect(validateMetaName("Oferta Outubro")).not.toBeNull();
+    expect(validateMetaName("ação")).not.toBeNull();
   });
 });

@@ -37,7 +37,7 @@ export interface CampaignsRepository {
   getSettings(userId: string): Promise<Settings>;
   saveSettings(userId: string, settings: Settings): Promise<void>;
   listTemplates(userId: string): Promise<Template[]>;
-  addTemplate(userId: string, input: { name: string; body: string }): Promise<{ ok: true; template: Template } | { ok: false; error: string }>;
+  addTemplate(userId: string, input: { name: string; body: string; metaName?: string }): Promise<{ ok: true; template: Template } | { ok: false; error: string }>;
   approveTemplate(userId: string, id: string): Promise<Simple>;
   removeTemplate(userId: string, id: string): Promise<Simple>;
   previewAudience(userId: string, stages: StageId[], tag: string): Promise<AudienceReport>;
@@ -203,7 +203,16 @@ export function createCampaignsRepository({ leads, now = () => new Date() }: Rep
         const outcomes = new Map<string, logic.SendOutcome>();
         for (const item of plan.sends) {
           try {
-            outcomes.set(item.messageId, await sender.send({ to: item.to, text: item.text, templateName: item.templateName }));
+            outcomes.set(
+              item.messageId,
+              await sender.send({
+                to: item.to,
+                text: item.text,
+                templateName: item.templateName,
+                purpose: "marketing",
+                ...(item.template ? { template: item.template } : {}),
+              }),
+            );
           } catch {
             outcomes.set(item.messageId, { ok: false, error: "Erro inesperado ao enviar." });
           }

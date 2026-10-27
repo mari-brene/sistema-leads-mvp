@@ -25,6 +25,8 @@ export type DecideInput = {
   conversation: Pick<Conversation, "mode" | "aiRepliesInRow"> | null;
   aiUsedToday: number;
   hasPhone: boolean;
+  /** Se informado, a conversa vai para você com este motivo (ex.: o contato mandou foto ou áudio). */
+  forceHumanReason?: string;
 };
 
 /**
@@ -44,6 +46,7 @@ export function decideInbound(input: DecideInput): InboundDecision {
       reason: "A mensagem cita uma palavra de saída (sair/parar/cancelar). Confira e, se for um pedido de saída, use “Registrar saída” no lead.",
     };
   }
+  if (input.forceHumanReason) return { kind: "human", reason: input.forceHumanReason };
   if (input.conversation?.mode === "humano") return { kind: "human", reason: "Você assumiu esta conversa." };
   if (!input.settings.aiEnabled) return { kind: "human", reason: "A resposta automática está desligada." };
   if (!input.settings.knowledge.trim()) {

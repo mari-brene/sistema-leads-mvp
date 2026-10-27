@@ -51,6 +51,8 @@ export type Template = {
   userId: string;
   name: string;
   body: string;
+  /** Nome do modelo aprovado na Meta (obrigatório para enviar no WhatsApp real). */
+  metaName?: string;
   status: TemplateStatus;
   createdAt: string;
 };

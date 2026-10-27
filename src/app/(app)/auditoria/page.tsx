@@ -42,7 +42,7 @@ export default async function AuditPage() {
                   <p className="text-sm text-slate-800">{entry.text}</p>
                   <p className="text-xs text-slate-400">{formatDateTime(entry.at)}</p>
                 </div>
-                <Badge tone={entry.kind === "erro" ? "red" : "sky"}>{entry.kind === "erro" ? "Erro" : "Agendador"}</Badge>
+                <Badge tone={entry.kind === "erro" ? "red" : "sky"}>{entry.kind === "erro" ? "Erro" : entry.kind === "whatsapp" ? "WhatsApp" : "Agendador"}</Badge>
               </li>
             ))}
           </ul>

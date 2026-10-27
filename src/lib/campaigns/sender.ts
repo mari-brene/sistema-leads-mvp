@@ -3,7 +3,19 @@
  * Na fase 8 entra aqui o envio pela WhatsApp Cloud API oficial da Meta.
  */
 
-export type SendRequest = { to: string; text: string; templateName: string };
+/**
+ * purpose:
+ *  - "marketing": campanha. No WhatsApp real SÓ pode sair por modelo aprovado (template).
+ *  - "service": resposta a quem escreveu para nós (vale por 24h depois da última mensagem do contato).
+ * template: nome do modelo aprovado na Meta e os valores das variáveis, na ordem.
+ */
+export type SendRequest = {
+  to: string;
+  text: string;
+  templateName: string;
+  purpose: "marketing" | "service";
+  template?: { name: string; params: string[] };
+};
 
 export type SendResult = { ok: true; providerId: string } | { ok: false; error: string };
 

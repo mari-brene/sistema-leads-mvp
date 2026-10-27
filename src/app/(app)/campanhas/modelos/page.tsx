@@ -28,11 +28,16 @@ export default async function TemplatesPage() {
         escreve o modelo e acompanha a aprovação.
       </p>
 
-      {config.mockMode && (
+      {config.simulatedWhatsApp ? (
         <p className="mt-4 rounded-xl bg-sky-50 px-3.5 py-2.5 text-sm text-sky-900">
-          <strong>Modo simulação:</strong> como ainda não há conexão com a Meta, use o botão{" "}
-          <strong>Simular aprovação</strong> para liberar o modelo. No WhatsApp real, quem aprova é a Meta (leva de minutos a
-          1 dia).
+          <strong>Modo simulação:</strong> use o botão <strong>Simular aprovação</strong> para liberar o modelo. No WhatsApp
+          real, quem aprova é a Meta (leva de minutos a 1 dia).
+        </p>
+      ) : (
+        <p className="mt-4 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
+          <strong>WhatsApp real:</strong> crie o modelo no painel da Meta (WhatsApp Manager → Modelos de mensagem), com o
+          mesmo número de variáveis na mesma ordem ({"{{1}}"}, {"{{2}}"}...) e a frase para sair no rodapé. Quando a Meta
+          aprovar, informe aqui o nome dele e clique em <strong>Marcar como aprovado na Meta</strong>.
         </p>
       )}
 
@@ -59,13 +64,18 @@ export default async function TemplatesPage() {
             <p className="mt-2 whitespace-pre-wrap rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700">
               {template.body}
             </p>
+            {!config.simulatedWhatsApp && (
+              <p className="mt-2 text-xs text-slate-500">
+                Nome na Meta: {template.metaName ? <strong>{template.metaName}</strong> : <span className="text-red-600">não informado (sem ele o envio real falha)</span>}
+              </p>
+            )}
             <p className="mt-2 text-xs text-slate-500">Criado em {formatDateTime(template.createdAt)}</p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              {config.mockMode && template.status === "pendente" && (
+              {template.status === "pendente" && (
                 <form action={approveTemplateAction}>
                   <input type="hidden" name="id" value={template.id} />
                   <Button type="submit" variant="outline">
-                    Simular aprovação
+                    {config.simulatedWhatsApp ? "Simular aprovação" : "Marcar como aprovado na Meta"}
                   </Button>
                 </form>
               )}

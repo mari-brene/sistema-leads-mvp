@@ -185,8 +185,8 @@ describe("campanhas de ponta a ponta (arquivos locais, envio simulado)", () => {
   });
 
   it("o simulador falha para números terminados em 0000 e funciona para os outros", async () => {
-    expect((await mockSender.send({ to: "+5547999990000", text: "x", templateName: "t" })).ok).toBe(false);
-    expect((await mockSender.send({ to: "+5547999990001", text: "x", templateName: "t" })).ok).toBe(true);
+    expect((await mockSender.send({ to: "+5547999990000", text: "x", templateName: "t", purpose: "marketing" })).ok).toBe(false);
+    expect((await mockSender.send({ to: "+5547999990001", text: "x", templateName: "t", purpose: "marketing" })).ok).toBe(true);
   });
 
   it("lista só quem tem campanha em andamento (para o agendador)", async () => {
