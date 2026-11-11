@@ -5,7 +5,6 @@ import { addTemplateAction, type TemplateFormState } from "@/app/(app)/campanhas
 import { Button } from "@/components/ui/button";
 import { Field, TextAreaField } from "@/components/ui/field";
 
-/** Formulário para criar um modelo de mensagem. */
 export function TemplateForm() {
   const [state, formAction, pending] = useActionState<TemplateFormState, FormData>(addTemplateAction, undefined);
   const formRef = useRef<HTMLFormElement>(null);
