@@ -15,8 +15,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return { title: item?.label ?? "Página não encontrada" };
 }
 
-// Tela provisória das seções que ainda serão construídas.
-// Quando uma fase ficar pronta, a tela real ganha a própria pasta e passa na frente desta.
 export default async function SectionPage({ params }: PageProps) {
   const { secao } = await params;
   const item = findItem(secao);
