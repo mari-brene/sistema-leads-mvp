@@ -76,5 +76,4 @@ export function TextAreaField({ label, name, hint, wrapperClassName, ...props }:
   );
 }
 
-/** Estilo de campo para usar em <select>/<input> soltos (fora de um formulário com rótulo). */
 export const controlClass = CONTROL;
