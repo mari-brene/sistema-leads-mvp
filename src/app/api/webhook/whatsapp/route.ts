@@ -11,14 +11,12 @@ export const maxDuration = 60;
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
-/** A Meta chama este endereço uma vez, ao você salvar o webhook, para conferir o token. */
 export async function GET(request: Request) {
   const challenge = verifyChallenge(new URL(request.url).searchParams, config.whatsappVerifyToken);
   if (challenge === null) return new Response("Não autorizado.", { status: 403, headers: NO_STORE });
   return new Response(challenge, { status: 200, headers: { ...NO_STORE, "Content-Type": "text/plain" } });
 }
 
-/** Mensagens que chegam do WhatsApp. Só aceita chamadas assinadas pela Meta. */
 export async function POST(request: Request) {
   if (config.simulatedWhatsApp || !config.metaAppSecret) {
     return NextResponse.json({ ok: false, error: "Webhook desligado." }, { status: 503, headers: NO_STORE });
@@ -42,7 +40,6 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({ ok: true, ...summary }, { headers: NO_STORE });
   } catch {
-    // 500 faz a Meta tentar de novo; mensagens repetidas são ignoradas pela checagem de duplicadas.
     return NextResponse.json({ ok: false, error: "Erro ao processar." }, { status: 500, headers: NO_STORE });
   }
 }
