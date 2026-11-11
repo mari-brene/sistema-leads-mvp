@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { getAuthAdapter } from "@/lib/auth";
 import { endSession, startSession } from "@/lib/session";
 
-/** Se deu erro, devolvemos também nome e e-mail para a tela não apagar o que a pessoa digitou. */
 export type FormState = { error?: string; name?: string; email?: string } | undefined;
 
 function field(formData: FormData, name: string): string {
