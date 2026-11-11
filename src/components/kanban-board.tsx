@@ -11,10 +11,6 @@ import { isStageId, sourceLabel, STAGES, type KanbanLead, type StageId } from "@
 import { formatPhone } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
-/**
- * Quadro Kanban. Arrastar e soltar usa o recurso nativo do navegador (sem biblioteca extra).
- * No celular, onde arrastar é difícil, cada cartão tem uma lista "Mover para…".
- */
 export function KanbanBoard({ initialLeads }: { initialLeads: KanbanLead[] }) {
   const [leads, setLeads] = useState<KanbanLead[]>(initialLeads);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -27,7 +23,6 @@ export function KanbanBoard({ initialLeads }: { initialLeads: KanbanLead[] }) {
     [leads],
   );
 
-  /** Move na tela na hora e grava no servidor; se falhar, volta como estava. */
   function commitMove(id: string, stage: StageId, index: number) {
     const current = leads.find((lead) => lead.id === id);
     if (!current) return;
@@ -89,7 +84,6 @@ export function KanbanBoard({ initialLeads }: { initialLeads: KanbanLead[] }) {
     if (id) commitMove(id, stage, END_OF_COLUMN);
   }
 
-  /** Soltou em cima de um cartão: entra antes dele (metade de cima) ou depois (metade de baixo). */
   function onCardDrop(event: DragEvent<HTMLElement>, target: KanbanLead) {
     event.preventDefault();
     event.stopPropagation();
