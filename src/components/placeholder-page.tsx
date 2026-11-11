@@ -1,7 +1,6 @@
 import { Icon } from "@/components/icons";
 import type { NavItem } from "@/lib/nav";
 
-/** Tela provisória das seções que ainda serão construídas nas próximas fases. */
 export function PlaceholderPage({ item }: { item: NavItem }) {
   return (
     <div className="mx-auto max-w-2xl">
