@@ -73,6 +73,14 @@ export const config = {
     return process.env.DATA_BACKEND === "supabase" ? "supabase" : "file";
   },
 
+  /**
+   * Onde os LEADS ficam quando DATA_BACKEND=supabase:
+   * "collection" (padrão): dentro da tabela app_data, como sempre. "table": na tabela própria "leads".
+   */
+  get leadsStore(): "collection" | "table" {
+    return process.env.LEADS_STORE === "table" ? "table" : "collection";
+  },
+
   /** Endereço do projeto no Supabase (ex.: https://abcd.supabase.co). */
   get supabaseUrl(): string {
     return (process.env.SUPABASE_URL ?? "").trim().replace(/\/+$/, "");
