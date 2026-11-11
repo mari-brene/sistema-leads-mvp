@@ -18,7 +18,6 @@ type Props = {
   footer: string;
 };
 
-/** Prepara a mensagem, abre o WhatsApp e, depois que a pessoa enviou, registra no histórico. */
 export function ManualWhatsApp({ leadId, leadName, company, phone, blockReason, templates, footer }: Props) {
   const lead = { name: leadName, company };
   const build = (body: string) => withFooter(renderTemplate(body, lead), footer);
