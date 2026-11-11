@@ -7,19 +7,15 @@ import { parseCreateForm, parseUpdateForm, rawValues } from "@/lib/leads/form";
 import { isStageId } from "@/lib/leads/types";
 import { requireUser } from "@/lib/require-user";
 
-/** Resultado dos formulários de criar/editar lead. */
 export type LeadFormState =
   | {
       error?: string;
-      /** Quando o erro é "telefone já existe", o id do lead que já tem esse telefone. */
       duplicateId?: string;
       saved?: boolean;
-      /** O que a pessoa digitou, para não perder os campos quando dá erro. */
       values?: Record<string, string>;
     }
   | undefined;
 
-/** Resultado dos formulários pequenos (nota, autorização). */
 export type SimpleState = { error?: string; text?: string } | undefined;
 
 function id(formData: FormData): string {
@@ -61,11 +57,6 @@ export async function updateLeadAction(_prev: LeadFormState, formData: FormData)
   return { saved: true };
 }
 
-/**
- * Chamada direto pelo Kanban ao soltar um cartão.
- * Não usa revalidatePath de propósito: o quadro já mostra o resultado na hora,
- * e recarregar os dados no meio de vários arrastes faria os cartões "pularem".
- */
 export async function moveLeadAction(
   leadId: string,
   stage: string,
