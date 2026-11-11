@@ -12,8 +12,6 @@ function text(formData: FormData, name: string): string {
   return typeof value === "string" ? value : "";
 }
 
-// ---------- Modelos de mensagem ----------
-
 export type TemplateFormState = { error?: string; saved?: boolean; values?: { name: string; body: string; metaName: string } } | undefined;
 
 export async function addTemplateAction(_prev: TemplateFormState, formData: FormData): Promise<TemplateFormState> {
@@ -27,7 +25,6 @@ export async function addTemplateAction(_prev: TemplateFormState, formData: Form
   return { saved: true };
 }
 
-/** Marca o modelo como aprovado (na simulação é um atalho; no WhatsApp real, você confirma o que a Meta já aprovou). */
 export async function approveTemplateAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const repo = getCampaignsRepository();
@@ -41,8 +38,6 @@ export async function deleteTemplateAction(formData: FormData): Promise<void> {
   revalidatePath("/campanhas/modelos");
 }
 
-// ---------- Nova campanha ----------
-
 export type AudiencePreview = {
   considered: number;
   eligible: number;
@@ -50,7 +45,6 @@ export type AudiencePreview = {
   excluded: { semOptIn: number; optOut: number; semTelefone: number };
 };
 
-/** Mostra quantas pessoas receberiam a campanha com as etapas e a tag escolhidas (sem criar nada). */
 export async function previewAudienceAction(stages: unknown, tag: unknown): Promise<AudiencePreview> {
   const user = await requireUser();
   const chosen = (Array.isArray(stages) ? stages : []).filter(
@@ -83,8 +77,6 @@ export async function createCampaignAction(_prev: CampaignFormState, formData: F
   redirect(`/campanhas/${result.campaign.id}`);
 }
 
-// ---------- Controle da campanha ----------
-
 export type ControlResult = { ok: boolean; error?: string };
 
 export async function controlCampaignAction(id: string, action: string): Promise<ControlResult> {
@@ -108,7 +100,6 @@ export type BatchActionResult =
   | { ok: false; error: string }
   | { ok: true; sent: number; failed: number; skipped: number; remainingToday: number; queuedLeft: number; simulated: boolean };
 
-/** Envia o próximo lote da fila (até 10 mensagens). Na fase 7 isto passa a ser feito sozinho por um agendador. */
 export async function runBatchAction(): Promise<BatchActionResult> {
   const user = await requireUser();
   const result = await getCampaignsRepository().runBatch(user.id, getSender());
