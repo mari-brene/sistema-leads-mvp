@@ -41,7 +41,6 @@ function download(fileName: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Planilhas do Excel em português costumam vir em Windows-1252; as do Google, em UTF-8. */
 async function readFileText(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   try {
