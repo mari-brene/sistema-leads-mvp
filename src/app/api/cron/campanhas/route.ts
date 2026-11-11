@@ -5,20 +5,17 @@ import { config } from "@/lib/config";
 import { authorizeCron } from "@/lib/cron/auth";
 import { runCampaignsJob } from "@/lib/cron/campaigns-job";
 
-// Esta rota nunca é guardada em cache e pode levar até 60 s.
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
-/** Chamada pelo agendador do GitHub Actions (POST + Authorization: Bearer CRON_SECRET). */
 export async function POST(request: Request) {
   const auth = authorizeCron(request.headers.get("authorization"), config.cronSecret);
   if (auth === "disabled") {
     return NextResponse.json({ ok: false, error: "Agendador desligado: defina CRON_SECRET (24+ caracteres)." }, { status: 503, headers: NO_STORE });
   }
   if (auth !== "ok") {
-    // Resposta curta e igual para qualquer erro, sem dica do que faltou.
     return NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401, headers: NO_STORE });
   }
 
