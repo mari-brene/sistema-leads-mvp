@@ -2,7 +2,6 @@ import { cn } from "@/lib/utils";
 
 export const APP_NAME = "Sistema Leads MVP";
 
-/** Quadradinho colorido com a letra L, usado como logo. */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <span
