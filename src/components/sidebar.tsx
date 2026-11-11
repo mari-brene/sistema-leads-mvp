@@ -8,10 +8,6 @@ import { Icon } from "@/components/icons";
 import { NAV_ITEMS } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
-/**
- * Menu lateral recolhível.
- * No celular ele fica sempre estreito (só ícones); no computador você pode recolher ou expandir.
- */
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);

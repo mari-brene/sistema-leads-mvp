@@ -3,7 +3,6 @@ import { consentStatus, type ConsentStatus } from "@/lib/leads/consent";
 import { stageInfo, type Lead, type StageId } from "@/lib/leads/types";
 import { cn } from "@/lib/utils";
 
-/** Etapa do funil, com a mesma cor das colunas do Kanban. */
 export function StageBadge({ stage }: { stage: StageId }) {
   const info = stageInfo(stage);
   return (
@@ -43,7 +42,6 @@ const CONSENT_VIEW: Record<
   },
 };
 
-/** Selo de autorização para marketing (opt-in / opt-out). */
 export function ConsentBadge({
   lead,
   compact = false,

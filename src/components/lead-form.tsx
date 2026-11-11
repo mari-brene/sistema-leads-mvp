@@ -14,7 +14,6 @@ import { CONSENT_SOURCES, SOURCES, STAGES, type Lead } from "@/lib/leads/types";
 
 type LeadFormProps = { mode: "create" } | { mode: "edit"; lead: Lead };
 
-/** Formulário usado para criar um lead novo e para editar os dados de um lead existente. */
 export function LeadForm(props: LeadFormProps) {
   const lead = props.mode === "edit" ? props.lead : undefined;
   const [state, formAction, pending] = useActionState<LeadFormState, FormData>(
