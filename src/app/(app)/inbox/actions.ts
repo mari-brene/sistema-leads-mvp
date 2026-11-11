@@ -18,10 +18,11 @@ function refresh(leadId: string) {
   revalidatePath("/kanban");
 }
 
+/** Você escreve para o contato (só dentro das 24h). */
 export async function sendReplyAction(_prev: InboxFormState, formData: FormData): Promise<InboxFormState> {
   const user = await requireUser();
   const leadId = text(formData, "leadId");
-  const result = await getInboxRepository().sendHuman(user.id, leadId, text(formData, "message"));
+  const result = await getInboxRepository().sendHuman(user.clientId, leadId, text(formData, "message"));
   refresh(leadId);
   return result.ok ? { ok: "Mensagem enviada." } : { error: result.error };
 }
@@ -29,22 +30,23 @@ export async function sendReplyAction(_prev: InboxFormState, formData: FormData)
 export async function takeOverAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const leadId = text(formData, "leadId");
-  await getInboxRepository().takeOver(user.id, leadId);
+  await getInboxRepository().takeOver(user.clientId, leadId);
   refresh(leadId);
 }
 
 export async function handBackAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const leadId = text(formData, "leadId");
-  await getInboxRepository().handBack(user.id, leadId);
+  await getInboxRepository().handBack(user.clientId, leadId);
   refresh(leadId);
 }
 
+/** SIMULAÇÃO: finge que o contato mandou uma mensagem. Só existe no modo simulação. */
 export async function simulateInboundAction(_prev: InboxFormState, formData: FormData): Promise<InboxFormState> {
   const user = await requireUser();
   if (!config.simulatedWhatsApp) return { error: "A simulação só funciona no modo simulação (o WhatsApp real recebe as mensagens pelo webhook)." };
   const leadId = text(formData, "leadId");
-  const result = await getInboxRepository().receive(user.id, leadId, text(formData, "message"));
+  const result = await getInboxRepository().receive(user.clientId, leadId, text(formData, "message"));
   refresh(leadId);
   if (!result.ok) return { error: result.error };
   const labels = {
@@ -60,7 +62,7 @@ export type KnowledgeFormState = { error?: string; saved?: boolean } | undefined
 
 export async function saveKnowledgeAction(_prev: KnowledgeFormState, formData: FormData): Promise<KnowledgeFormState> {
   const user = await requireUser();
-  const result = await getInboxRepository().saveSettings(user.id, {
+  const result = await getInboxRepository().saveSettings(user.clientId, {
     aiEnabled: formData.get("aiEnabled") === "on",
     businessName: text(formData, "businessName"),
     knowledge: text(formData, "knowledge"),

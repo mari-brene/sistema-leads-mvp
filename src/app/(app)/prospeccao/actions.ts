@@ -10,6 +10,7 @@ import { MAX_RESULTS, type PlaceResult } from "@/lib/places/types";
 import { requireUser } from "@/lib/require-user";
 
 export type FoundPlace = PlaceResult & {
+  /** Nome do lead, quando esta empresa já está na base. */
   inBase: string | null;
 };
 
@@ -34,10 +35,10 @@ export type AddActionResult =
 /** Procura empresas. Cada ida ao OpenStreetMap conta no limite diário. */
 export async function searchPlacesAction(term: string, city: string): Promise<SearchActionResult> {
   const user = await requireUser();
-  const response = await runSearch(user.id, term, city);
+  const response = await runSearch(user.clientId, term, city);
   if (!response.ok) return response;
 
-  const leads = await getLeadsRepository().list(user.id);
+  const leads = await getLeadsRepository().list(user.clientId);
   const byExternalId = new Map<string, string>();
   const byPhone = new Map<string, string>();
   for (const lead of leads) {
@@ -72,6 +73,8 @@ export async function searchPlacesAction(term: string, city: string): Promise<Se
     results,
   };
 }
+
+/** Coloca as empresas escolhidas na coluna Prospecção, sem autorização (opt-in). */
 export async function addProspectsAction(
   places: unknown,
   context: { term: string; placeLabel: string },
@@ -96,7 +99,7 @@ export async function addProspectsAction(
   if (clean.length === 0) return { ok: false, error: "Não consegui ler as empresas escolhidas. Faça a busca de novo." };
 
   const inputs = clean.map((place) => placeToLeadInput(place, { term, placeLabel }));
-  const result = await getLeadsRepository().importMany(user.id, inputs);
+  const result = await getLeadsRepository().importMany(user.clientId, inputs);
 
   const skippedIndexes = new Set(result.skipped.map((skip) => skip.index));
   const addedIds = clean.filter((_, index) => !skippedIndexes.has(index)).map((place) => place.externalId);

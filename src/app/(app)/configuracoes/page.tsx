@@ -10,8 +10,8 @@ export const metadata: Metadata = { title: "Configurações" };
 export default async function SettingsPage() {
   const user = await requireUser();
   const [settings, inbox] = await Promise.all([
-    getCampaignsRepository().getSettings(user.id),
-    getInboxRepository().getSettings(user.id),
+    getCampaignsRepository().getSettings(user.clientId),
+    getInboxRepository().getSettings(user.clientId),
   ]);
 
   return (

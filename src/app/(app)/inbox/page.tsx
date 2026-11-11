@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Caixa de entrada" };
 
 export default async function InboxPage() {
   const user = await requireUser();
-  const rows = await getInboxRepository().listConversations(user.id);
+  const rows = await getInboxRepository().listConversations(user.clientId);
 
   return (
     <div className="mx-auto max-w-4xl">

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Auditoria" };
 
 export default async function AuditPage() {
   const user = await requireUser();
-  const { entries, lastCron } = await readAudit(user.id);
+  const { entries, lastCron } = await readAudit(user.clientId);
 
   return (
     <div className="mx-auto max-w-3xl">

@@ -6,16 +6,21 @@ import { getLeadsRepository } from "@/lib/leads";
 import { parseCreateForm, parseUpdateForm, rawValues } from "@/lib/leads/form";
 import { isStageId } from "@/lib/leads/types";
 import { requireUser } from "@/lib/require-user";
+import { validateManualSend } from "@/lib/whatsapp/manual";
 
+/** Resultado dos formulários de criar/editar lead. */
 export type LeadFormState =
   | {
       error?: string;
+      /** Quando o erro é "telefone já existe", o id do lead que já tem esse telefone. */
       duplicateId?: string;
       saved?: boolean;
+      /** O que a pessoa digitou, para não perder os campos quando dá erro. */
       values?: Record<string, string>;
     }
   | undefined;
 
+/** Resultado dos formulários pequenos (nota, autorização). */
 export type SimpleState = { error?: string; text?: string } | undefined;
 
 function id(formData: FormData): string {
@@ -29,7 +34,7 @@ export async function createLeadAction(_prev: LeadFormState, formData: FormData)
   const parsed = parseCreateForm(formData);
   if (!parsed.ok) return { error: parsed.error, values: rawValues(formData) };
 
-  const result = await getLeadsRepository().create(user.id, parsed.value);
+  const result = await getLeadsRepository().create(user.clientId, parsed.value);
   if (!result.ok) {
     return { error: result.error, duplicateId: result.duplicateId, values: rawValues(formData) };
   }
@@ -46,7 +51,7 @@ export async function updateLeadAction(_prev: LeadFormState, formData: FormData)
   const parsed = parseUpdateForm(formData);
   if (!parsed.ok) return { error: parsed.error, values: rawValues(formData) };
 
-  const result = await getLeadsRepository().update(user.id, leadId, parsed.value);
+  const result = await getLeadsRepository().update(user.clientId, leadId, parsed.value);
   if (!result.ok) {
     return { error: result.error, duplicateId: result.duplicateId, values: rawValues(formData) };
   }
@@ -57,6 +62,11 @@ export async function updateLeadAction(_prev: LeadFormState, formData: FormData)
   return { saved: true };
 }
 
+/**
+ * Chamada direto pelo Kanban ao soltar um cartão.
+ * Não usa revalidatePath de propósito: o quadro já mostra o resultado na hora,
+ * e recarregar os dados no meio de vários arrastes faria os cartões "pularem".
+ */
 export async function moveLeadAction(
   leadId: string,
   stage: string,
@@ -68,7 +78,7 @@ export async function moveLeadAction(
     return { ok: false, error: "Dados inválidos." };
   }
 
-  const result = await getLeadsRepository().move(user.id, leadId, stage, index);
+  const result = await getLeadsRepository().move(user.clientId, leadId, stage, index);
   return result.ok ? { ok: true } : { ok: false, error: result.error };
 }
 
@@ -78,7 +88,7 @@ export async function addNoteAction(_prev: SimpleState, formData: FormData): Pro
   const value = formData.get("text");
   const text = typeof value === "string" ? value : "";
 
-  const result = await getLeadsRepository().addNote(user.id, leadId, text);
+  const result = await getLeadsRepository().addNote(user.clientId, leadId, text);
   if (!result.ok) return { error: result.error, text };
 
   revalidatePath(`/leads/${leadId}`);
@@ -92,7 +102,7 @@ export async function registerOptInAction(_prev: SimpleState, formData: FormData
   const source = formData.get("optInSource");
 
   const result = await getLeadsRepository().registerOptIn(
-    user.id,
+    user.clientId,
     leadId,
     typeof source === "string" ? source : "",
   );
@@ -108,7 +118,7 @@ export async function registerOptOutAction(_prev: SimpleState, formData: FormDat
   const user = await requireUser();
   const leadId = id(formData);
 
-  const result = await getLeadsRepository().registerOptOut(user.id, leadId);
+  const result = await getLeadsRepository().registerOptOut(user.clientId, leadId);
   if (!result.ok) return { error: result.error };
 
   revalidatePath(`/leads/${leadId}`);
@@ -117,9 +127,33 @@ export async function registerOptOutAction(_prev: SimpleState, formData: FormDat
   return undefined;
 }
 
+/** Resultado do "registrar envio manual". */
+export type ManualSendState = { error?: string; done?: boolean } | undefined;
+
+/** A pessoa abriu o WhatsApp e enviou a mensagem à mão: anota no histórico (e move Novo → Contatado). */
+export async function recordManualSendAction(_prev: ManualSendState, formData: FormData): Promise<ManualSendState> {
+  const user = await requireUser();
+  const leadId = id(formData);
+  const value = formData.get("text");
+  const text = typeof value === "string" ? value : "";
+
+  const repo = getLeadsRepository();
+  const lead = await repo.get(user.clientId, leadId);
+  const problem = validateManualSend(lead, text);
+  if (problem) return { error: problem };
+
+  const result = await repo.recordCampaignMessage(user.clientId, leadId, `Envio manual pelo WhatsApp: ${text.trim()}`);
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+  revalidatePath("/kanban");
+  return { done: true };
+}
+
 export async function deleteLeadAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  await getLeadsRepository().remove(user.id, id(formData));
+  await getLeadsRepository().remove(user.clientId, id(formData));
 
   revalidatePath("/leads");
   revalidatePath("/kanban");

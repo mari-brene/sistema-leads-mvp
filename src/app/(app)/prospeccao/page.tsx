@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Prospecção" };
 
 export default async function ProspectingPage() {
   const user = await requireUser();
-  const { remaining, limit } = await searchesLeft(user.id);
+  const { remaining, limit } = await searchesLeft(user.clientId);
 
   return (
     <div className="mx-auto max-w-5xl">

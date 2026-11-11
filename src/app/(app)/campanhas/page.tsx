@@ -14,10 +14,10 @@ export default async function CampaignsPage() {
   const user = await requireUser();
   const repo = getCampaignsRepository();
   const [campaigns, usage, templates, settings] = await Promise.all([
-    repo.listCampaigns(user.id),
-    repo.usage(user.id),
-    repo.listTemplates(user.id),
-    repo.getSettings(user.id),
+    repo.listCampaigns(user.clientId),
+    repo.usage(user.clientId),
+    repo.listTemplates(user.clientId),
+    repo.getSettings(user.clientId),
   ]);
   const approved = templates.filter((template) => template.status === "aprovado").length;
 

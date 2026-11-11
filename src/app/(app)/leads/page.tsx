@@ -37,7 +37,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const marketing = first(params.marketing);
   const stage = isStageId(stageParam) ? stageParam : "";
 
-  const all = await getLeadsRepository().list(user.id);
+  const all = await getLeadsRepository().list(user.clientId);
   const leads = all
     .filter((lead) => matchesQuery(lead, q))
     .filter((lead) => !stage || lead.stage === stage)

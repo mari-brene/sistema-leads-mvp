@@ -37,7 +37,7 @@ export async function previewImportAction(text: string): Promise<PreviewResult> 
   const user = await requireUser();
   if (!validText(text)) return { ok: false, error: TOO_BIG };
 
-  const existing = await getLeadsRepository().list(user.id);
+  const existing = await getLeadsRepository().list(user.clientId);
   const analysis = analyzeImport(text, existing);
   if (!analysis.ok) return analysis;
 
@@ -56,7 +56,7 @@ export async function runImportAction(text: string): Promise<RunResult> {
   if (!validText(text)) return { ok: false, error: TOO_BIG };
 
   const repository = getLeadsRepository();
-  const existing = await repository.list(user.id);
+  const existing = await repository.list(user.clientId);
   const analysis = analyzeImport(text, existing);
   if (!analysis.ok) return analysis;
 
@@ -67,7 +67,7 @@ export async function runImportAction(text: string): Promise<RunResult> {
 
   // O repositório confere os telefones de novo na hora de gravar (a base pode ter mudado nesse meio tempo).
   const result = await repository.importMany(
-    user.id,
+    user.clientId,
     fresh.map((row) => row.input!),
   );
 

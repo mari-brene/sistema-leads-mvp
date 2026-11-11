@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Kanban" };
 
 export default async function KanbanPage() {
   const user = await requireUser();
-  const leads = await getLeadsRepository().list(user.id);
+  const leads = await getLeadsRepository().list(user.clientId);
 
   return (
     <div>

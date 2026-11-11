@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { getCampaignsRepository } from "@/lib/campaigns";
 import { LeadForm } from "@/components/lead-form";
+import { ManualWhatsApp } from "@/components/manual-whatsapp";
 import { ConsentBadge, StageBadge } from "@/components/lead-badges";
 import { formatDateTime } from "@/lib/format";
 import { getLeadsRepository } from "@/lib/leads";
@@ -10,6 +12,7 @@ import { sourceLabel, type LeadEventType } from "@/lib/leads/types";
 import { formatPhone } from "@/lib/phone";
 import { requireUser } from "@/lib/require-user";
 import { cn } from "@/lib/utils";
+import { manualBlockReason } from "@/lib/whatsapp/manual";
 import { ConsentPanel, DeleteLeadButton, NoteForm, StageSelect } from "./panels";
 
 export const metadata: Metadata = { title: "Lead" };
@@ -36,10 +39,12 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
   const user = await requireUser();
   const { id } = await params;
 
-  const lead = await getLeadsRepository().get(user.id, id);
+  const lead = await getLeadsRepository().get(user.clientId, id);
   if (!lead) notFound();
 
   const history = [...lead.events].reverse();
+  const campaigns = getCampaignsRepository();
+  const [templates, settings] = await Promise.all([campaigns.listTemplates(user.clientId), campaigns.getSettings(user.clientId)]);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -85,6 +90,20 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
               optInSource={lead.optInSource}
               optOutAt={lead.optOutAt}
               hasPhone={Boolean(lead.phone)}
+            />
+          </Card>
+
+          <Card title="WhatsApp (envio manual)">
+            <ManualWhatsApp
+              leadId={lead.id}
+              leadName={lead.name}
+              company={lead.company}
+              phone={lead.phone}
+              blockReason={manualBlockReason(lead)}
+              templates={templates
+                .filter((item) => item.status !== "rejeitado")
+                .map((item) => ({ id: item.id, name: item.name, body: item.body }))}
+              footer={settings.optOutFooter}
             />
           </Card>
 

@@ -11,8 +11,8 @@ export const metadata: Metadata = { title: "Nova campanha" };
 export default async function NewCampaignPage() {
   const user = await requireUser();
   const [templates, leads] = await Promise.all([
-    getCampaignsRepository().listTemplates(user.id),
-    getLeadsRepository().list(user.id),
+    getCampaignsRepository().listTemplates(user.clientId),
+    getLeadsRepository().list(user.clientId),
   ]);
   const approved = templates.filter((template) => template.status === "aprovado");
   const tags = [...new Set(leads.flatMap((lead) => lead.tags))].sort((a, b) => a.localeCompare(b, "pt-BR"));

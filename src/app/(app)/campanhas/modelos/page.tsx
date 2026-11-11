@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Modelos de mensagem" };
 
 export default async function TemplatesPage() {
   const user = await requireUser();
-  const templates = (await getCampaignsRepository().listTemplates(user.id)).sort((a, b) =>
+  const templates = (await getCampaignsRepository().listTemplates(user.clientId)).sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt),
   );
 

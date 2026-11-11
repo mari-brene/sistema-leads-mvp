@@ -22,7 +22,7 @@ const AUTHOR_LABEL = { contato: "Contato", ia: "IA", voce: "Você", sistema: "Si
 export default async function ThreadPage({ params }: PageProps) {
   const user = await requireUser();
   const { leadId } = await params;
-  const thread = await getInboxRepository().getThread(user.id, leadId);
+  const thread = await getInboxRepository().getThread(user.clientId, leadId);
   if (!thread) notFound();
 
   const { lead, conversation, messages, canReply } = thread;

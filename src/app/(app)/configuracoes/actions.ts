@@ -19,7 +19,7 @@ export async function saveSettingsAction(_prev: SettingsFormState, formData: For
   });
   if (!parsed.ok) return { error: parsed.error };
 
-  await getCampaignsRepository().saveSettings(user.id, parsed.value);
+  await getCampaignsRepository().saveSettings(user.clientId, parsed.value);
   revalidatePath("/configuracoes");
   revalidatePath("/campanhas");
   return { saved: true };

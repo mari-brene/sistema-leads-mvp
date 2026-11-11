@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { config } from "@/lib/config";
 import { getSession } from "@/lib/session";
 
+// Estas telas dependem de quem está logado, então nunca são pré-geradas.
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {

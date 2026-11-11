@@ -31,9 +31,9 @@ export default async function CampaignPage({ params }: PageProps) {
   const { id } = await params;
   const repo = getCampaignsRepository();
   const [detail, usage, settings] = await Promise.all([
-    repo.getCampaign(user.id, id),
-    repo.usage(user.id),
-    repo.getSettings(user.id),
+    repo.getCampaign(user.clientId, id),
+    repo.usage(user.clientId),
+    repo.getSettings(user.clientId),
   ]);
   if (!detail) notFound();
 
