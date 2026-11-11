@@ -23,7 +23,6 @@ export function CampaignForm({ templates, tags }: { templates: TemplateOption[];
   const [preview, setPreview] = useState<AudiencePreview | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Atualiza a contagem do público sempre que as etapas ou a tag mudam (com uma pequena pausa enquanto digita).
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
