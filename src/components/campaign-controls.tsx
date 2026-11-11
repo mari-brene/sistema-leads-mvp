@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import type { CampaignStatus } from "@/lib/campaigns/types";
 
-/** Botões da campanha: iniciar, pausar, retomar, cancelar, excluir rascunho e enviar o próximo lote. */
 export function CampaignControls({ id, status, queued }: { id: string; status: CampaignStatus; queued: number }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
