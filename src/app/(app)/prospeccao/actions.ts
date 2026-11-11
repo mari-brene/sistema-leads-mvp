@@ -10,7 +10,6 @@ import { MAX_RESULTS, type PlaceResult } from "@/lib/places/types";
 import { requireUser } from "@/lib/require-user";
 
 export type FoundPlace = PlaceResult & {
-  /** Nome do lead, quando esta empresa já está na base. */
   inBase: string | null;
 };
 
@@ -73,8 +72,6 @@ export async function searchPlacesAction(term: string, city: string): Promise<Se
     results,
   };
 }
-
-/** Coloca as empresas escolhidas na coluna Prospecção, sem autorização (opt-in). */
 export async function addProspectsAction(
   places: unknown,
   context: { term: string; placeLabel: string },
