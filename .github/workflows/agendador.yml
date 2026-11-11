@@ -1,16 +1,8 @@
-# Agendador do Sistema Leads MVP (fase 7).
-# De segunda a sexta, das 9h às 18h (horário de Brasília), a cada 10 minutos chama o seu site, que então envia o próximo lote das campanhas em andamento
-# (respeitando horário, limite diário, opt-in e opt-out).
-#
-# Precisa de 2 "Secrets" no GitHub (Settings > Secrets and variables > Actions):
-#   SITE_URL     = endereço do site na Vercel, ex.: https://sistema-leads-mvp.vercel.app
-#   CRON_SECRET  = a mesma senha definida na Vercel
+
 name: Agendador
 
 on:
   schedule:
-    # O GitHub conta o horário em UTC (Brasília = UTC-3): 12h a 21h UTC = 9h a 18h59 em Brasília.
-    # Limitar o horário mantém o uso dentro dos 2.000 minutos gratuitos por mês de repositórios privados.
     - cron: "*/10 12-21 * * 1-5"
   workflow_dispatch: {}
 
