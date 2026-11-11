@@ -18,7 +18,6 @@ function refresh(leadId: string) {
   revalidatePath("/kanban");
 }
 
-/** Você escreve para o contato (só dentro das 24h). */
 export async function sendReplyAction(_prev: InboxFormState, formData: FormData): Promise<InboxFormState> {
   const user = await requireUser();
   const leadId = text(formData, "leadId");
@@ -41,7 +40,6 @@ export async function handBackAction(formData: FormData): Promise<void> {
   refresh(leadId);
 }
 
-/** SIMULAÇÃO: finge que o contato mandou uma mensagem. Só existe no modo simulação. */
 export async function simulateInboundAction(_prev: InboxFormState, formData: FormData): Promise<InboxFormState> {
   const user = await requireUser();
   if (!config.simulatedWhatsApp) return { error: "A simulação só funciona no modo simulação (o WhatsApp real recebe as mensagens pelo webhook)." };
