@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { readJson, writeJson } from "@/lib/storage";
 import type { LeadsRepository } from "@/lib/leads";
 import type { Ctx } from "@/lib/leads/logic";
 import { selectAudience, type AudienceReport } from "./audience";
 import * as logic from "./logic";
 import type { WhatsAppSender } from "./sender";
+import { createCollectionStore, type CampaignsStore } from "./store";
 import { checkWindow } from "./time";
 import {
-  DEFAULT_SETTINGS,
   type Campaign,
   type CampaignMessage,
   type MessageCounts,
@@ -18,8 +17,7 @@ import {
 import type { StageId } from "@/lib/leads/types";
 
 /**
- * Repositório de SIMULAÇÃO das campanhas: tudo em um arquivo local (.data/campaigns.json).
- * Na fase de contas reais, um repositório do Supabase com a mesma forma entra no lugar.
+ * Repositório das campanhas. As regras ficam em logic.ts; onde os dados moram é escolhido pelo "store" (store.ts).
  */
 
 type Simple = { ok: true } | { ok: false; error: string };
@@ -52,61 +50,16 @@ export interface CampaignsRepository {
   listActiveUserIds(): Promise<string[]>;
 }
 
-type FileData = {
-  settings: Record<string, Settings>;
-  templates: Template[];
-  campaigns: Campaign[];
-  messages: CampaignMessage[];
-};
-
-async function readAll(): Promise<FileData> {
-  const data = (await readJson<Partial<FileData> | null>("campaigns", null)) ?? {};
-  return {
-    settings: data.settings ?? {},
-    templates: data.templates ?? [],
-    campaigns: data.campaigns ?? [],
-    messages: data.messages ?? [],
-  };
-}
-
-async function writeAll(data: FileData): Promise<void> {
-  await writeJson("campaigns", data);
-}
-
-const globalWithLock = globalThis as typeof globalThis & { __campaignsLock?: Promise<unknown> };
-
-function withLock<T>(task: () => Promise<T>): Promise<T> {
-  const previous = globalWithLock.__campaignsLock ?? Promise.resolve();
-  const run = previous.then(task, task);
-  globalWithLock.__campaignsLock = run.catch(() => undefined);
-  return run;
-}
-
-function sliceOf(data: FileData, userId: string): Slice {
-  return {
-    settings: { ...DEFAULT_SETTINGS, ...(data.settings[userId] ?? {}) },
-    templates: data.templates.filter((item) => item.userId === userId),
-    campaigns: data.campaigns.filter((item) => item.userId === userId),
-    messages: data.messages.filter((item) => item.userId === userId),
-  };
-}
-
-function merge(data: FileData, userId: string, slice: Slice): FileData {
-  return {
-    settings: { ...data.settings, [userId]: slice.settings },
-    templates: [...data.templates.filter((item) => item.userId !== userId), ...slice.templates],
-    campaigns: [...data.campaigns.filter((item) => item.userId !== userId), ...slice.campaigns],
-    messages: [...data.messages.filter((item) => item.userId !== userId), ...slice.messages],
-  };
-}
-
 export type RepositoryDeps = {
   leads: LeadsRepository;
+  /** Onde guardar (padrão: arquivo/coleção; DATA_BACKEND e CAMPAIGNS_STORE escolhem em index.ts). */
+  store?: CampaignsStore;
   /** Relógio (os testes trocam por um relógio fixo). */
   now?: () => Date;
 };
 
-export function createCampaignsRepository({ leads, now = () => new Date() }: RepositoryDeps): CampaignsRepository {
+export function createCampaignsRepository({ leads, store = createCollectionStore(), now = () => new Date() }: RepositoryDeps): CampaignsRepository {
+  const { withLock } = store;
   const makeCtx = (): Ctx => ({ now: now().toISOString(), newId: () => randomUUID() });
 
   /** Lê, aplica uma regra pura sobre os dados desta pessoa e grava se deu certo. */
@@ -115,10 +68,10 @@ export function createCampaignsRepository({ leads, now = () => new Date() }: Rep
     apply: (slice: Slice, ctx: Ctx) => logic.Res<T>,
   ): Promise<({ ok: true } & T) | { ok: false; error: string }> {
     return withLock(async () => {
-      const data = await readAll();
-      const result = apply(sliceOf(data, userId), makeCtx());
+      const before = await store.load(userId);
+      const result = apply(before, makeCtx());
       if (!result.ok) return result;
-      await writeAll(merge(data, userId, result.slice));
+      await store.save(userId, before, result.slice);
       const rest: Record<string, unknown> = { ...result };
       delete rest.slice;
       return rest as { ok: true } & T;
@@ -127,17 +80,13 @@ export function createCampaignsRepository({ leads, now = () => new Date() }: Rep
 
   return {
     async getSettings(userId) {
-      return sliceOf(await readAll(), userId).settings;
+      return (await store.load(userId)).settings;
     },
 
-    saveSettings: (userId, settings) =>
-      withLock(async () => {
-        const data = await readAll();
-        await writeAll({ ...data, settings: { ...data.settings, [userId]: settings } });
-      }),
+    saveSettings: (userId, settings) => withLock(() => store.saveSettings(userId, settings)),
 
     async listTemplates(userId) {
-      return sliceOf(await readAll(), userId).templates;
+      return (await store.load(userId)).templates;
     },
 
     addTemplate: (userId, input) => mutate(userId, (slice, ctx) => logic.addTemplate(slice, userId, input, ctx)),
@@ -149,7 +98,7 @@ export function createCampaignsRepository({ leads, now = () => new Date() }: Rep
     },
 
     async listCampaigns(userId) {
-      const slice = sliceOf(await readAll(), userId);
+      const slice = await store.load(userId);
       return slice.campaigns
         .map((campaign) => ({
           campaign,
@@ -159,7 +108,7 @@ export function createCampaignsRepository({ leads, now = () => new Date() }: Rep
     },
 
     async getCampaign(userId, id) {
-      const slice = sliceOf(await readAll(), userId);
+      const slice = await store.load(userId);
       const campaign = slice.campaigns.find((item) => item.id === id);
       if (!campaign) return null;
       const messages = slice.messages.filter((message) => message.campaignId === id);
@@ -175,7 +124,7 @@ export function createCampaignsRepository({ leads, now = () => new Date() }: Rep
     removeCampaign: (userId, id) => mutate(userId, (slice) => logic.removeCampaign(slice, id)),
 
     async usage(userId) {
-      const slice = sliceOf(await readAll(), userId);
+      const slice = await store.load(userId);
       const current = now();
       return {
         sent: logic.sentToday(slice.messages, current),
@@ -185,14 +134,12 @@ export function createCampaignsRepository({ leads, now = () => new Date() }: Rep
     },
 
     async listActiveUserIds() {
-      const data = await readAll();
-      return [...new Set(data.campaigns.filter((campaign) => campaign.status === "em_andamento").map((campaign) => campaign.userId))];
+      return store.listActiveClientIds();
     },
 
     runBatch(userId, sender) {
       return withLock(async (): Promise<BatchResult> => {
-        const data = await readAll();
-        const slice = sliceOf(data, userId);
+        const slice = await store.load(userId);
         const allLeads = await leads.list(userId);
         const current = now();
 
@@ -220,7 +167,7 @@ export function createCampaignsRepository({ leads, now = () => new Date() }: Rep
 
         const ctx: Ctx = { now: current.toISOString(), newId: () => randomUUID() };
         const updated = logic.applyBatch(slice, plan, outcomes, ctx);
-        await writeAll(merge(data, userId, updated));
+        await store.save(userId, slice, updated);
 
         // Histórico do lead (e Novo → Contatado) só para quem recebeu de verdade.
         const campaignName = new Map(slice.campaigns.map((campaign) => [campaign.id, campaign.name]));
@@ -237,7 +184,7 @@ export function createCampaignsRepository({ leads, now = () => new Date() }: Rep
           failed: results.filter((outcome) => !outcome.ok).length,
           skipped: plan.skips.length,
           remainingToday: Math.max(0, plan.remainingToday - results.filter((outcome) => outcome.ok).length),
-          queuedLeft: updated.messages.filter((message) => message.userId === userId && message.status === "na_fila").length,
+          queuedLeft: updated.messages.filter((message) => message.status === "na_fila").length,
           simulated: sender.simulated,
         };
       });

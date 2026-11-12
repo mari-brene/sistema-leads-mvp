@@ -1,17 +1,25 @@
 import { config } from "@/lib/config";
 import { currentLeadsRepository } from "@/lib/leads";
 import { createCampaignsRepository, type CampaignsRepository } from "./repository";
+import { createTableStore } from "./store";
 import { createCloudSender } from "@/lib/whatsapp/cloud-sender";
 import { mockSender, type WhatsAppSender } from "./sender";
 
 export type { CampaignsRepository } from "./repository";
 export type { WhatsAppSender } from "./sender";
 
-const mockCampaignsRepository = createCampaignsRepository({ leads: currentLeadsRepository });
+const collectionRepository = createCampaignsRepository({ leads: currentLeadsRepository });
+const tableRepository = createCampaignsRepository({
+  leads: currentLeadsRepository,
+  store: createTableStore({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey }),
+});
 
-/** Campanhas: gravam em arquivo local ou no Supabase, conforme DATA_BACKEND. */
+/**
+ * Campanhas: coleção/arquivo (padrão) ou, com DATA_BACKEND=supabase e CAMPAIGNS_STORE=table, tabelas próprias.
+ * A escolha é feita a cada chamada, como nos leads.
+ */
 export function getCampaignsRepository(): CampaignsRepository {
-  return mockCampaignsRepository;
+  return config.dataBackend === "supabase" && config.campaignsStore === "table" ? tableRepository : collectionRepository;
 }
 
 /**

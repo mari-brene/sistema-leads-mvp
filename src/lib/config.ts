@@ -81,6 +81,11 @@ export const config = {
     return process.env.LEADS_STORE === "table" ? "table" : "collection";
   },
 
+  /** Onde ficam as campanhas: "collection" (padrão, como sempre) ou "table" (tabelas próprias do Supabase). */
+  get campaignsStore(): "collection" | "table" {
+    return process.env.CAMPAIGNS_STORE === "table" ? "table" : "collection";
+  },
+
   /** Endereço do projeto no Supabase (ex.: https://abcd.supabase.co). */
   get supabaseUrl(): string {
     return (process.env.SUPABASE_URL ?? "").trim().replace(/\/+$/, "");
