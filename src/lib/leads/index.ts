@@ -15,3 +15,13 @@ export function getLeadsRepository(): LeadsRepository {
   }
   return mockLeadsRepository;
 }
+
+/**
+ * O mesmo repositório de leads, mas que decide a cada chamada onde gravar (arquivo, coleção ou tabela).
+ * Campanhas e caixa de entrada usam este, para sempre falarem com o mesmo lugar que as telas.
+ */
+export const currentLeadsRepository: LeadsRepository = new Proxy({} as LeadsRepository, {
+  get(_target, method: string) {
+    return (...args: unknown[]) => (getLeadsRepository() as unknown as Record<string, (...a: unknown[]) => unknown>)[method](...args);
+  },
+});

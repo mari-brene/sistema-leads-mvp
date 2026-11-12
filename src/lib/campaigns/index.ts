@@ -1,5 +1,5 @@
 import { config } from "@/lib/config";
-import { mockLeadsRepository } from "@/lib/leads/mock-repository";
+import { currentLeadsRepository } from "@/lib/leads";
 import { createCampaignsRepository, type CampaignsRepository } from "./repository";
 import { createCloudSender } from "@/lib/whatsapp/cloud-sender";
 import { mockSender, type WhatsAppSender } from "./sender";
@@ -7,7 +7,7 @@ import { mockSender, type WhatsAppSender } from "./sender";
 export type { CampaignsRepository } from "./repository";
 export type { WhatsAppSender } from "./sender";
 
-const mockCampaignsRepository = createCampaignsRepository({ leads: mockLeadsRepository });
+const mockCampaignsRepository = createCampaignsRepository({ leads: currentLeadsRepository });
 
 /** Campanhas: gravam em arquivo local ou no Supabase, conforme DATA_BACKEND. */
 export function getCampaignsRepository(): CampaignsRepository {

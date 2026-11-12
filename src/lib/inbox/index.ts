@@ -1,6 +1,6 @@
 import { config } from "@/lib/config";
 import { getSender } from "@/lib/campaigns";
-import { mockLeadsRepository } from "@/lib/leads/mock-repository";
+import { currentLeadsRepository } from "@/lib/leads";
 import { createGeminiProvider, createGroqProvider, mockAi, type AiProvider } from "./ai";
 import { createInboxRepository, type InboxRepository } from "./repository";
 
@@ -8,7 +8,7 @@ export type { InboxRepository } from "./repository";
 export type { AiProvider } from "./ai";
 
 const mockInboxRepository = createInboxRepository({
-  leads: mockLeadsRepository,
+  leads: currentLeadsRepository,
   sender: () => getSender(),
   ai: () => getAi(),
 });
