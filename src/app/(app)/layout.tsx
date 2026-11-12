@@ -1,21 +1,22 @@
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { Icon } from "@/components/icons";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { config } from "@/lib/config";
-import { getSession } from "@/lib/session";
+import { NAV_ITEMS } from "@/lib/nav";
+import { requireUser } from "@/lib/require-user";
+import { navForRole } from "@/lib/tenancy/permissions";
 
+// Estas telas dependem de quem está logado, então nunca são pré-geradas.
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const user = await getSession();
-  if (!user) redirect("/login");
+  const user = await requireUser();
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      <Sidebar items={navForRole(NAV_ITEMS, user.role)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur md:px-6">

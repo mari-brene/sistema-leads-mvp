@@ -9,7 +9,7 @@ import { describeWindow } from "@/lib/campaigns/time";
 import { formatDateTime } from "@/lib/format";
 import { stageInfo } from "@/lib/leads/types";
 import { formatPhone } from "@/lib/phone";
-import { requireUser } from "@/lib/require-user";
+import { requirePermission } from "@/lib/require-user";
 
 export const metadata: Metadata = { title: "Campanha" };
 
@@ -27,7 +27,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 export default async function CampaignPage({ params }: PageProps) {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   const { id } = await params;
   const repo = getCampaignsRepository();
   const [detail, usage, settings] = await Promise.all([

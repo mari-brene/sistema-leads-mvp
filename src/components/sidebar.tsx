@@ -5,10 +5,14 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { BrandMark } from "@/components/brand";
 import { Icon } from "@/components/icons";
-import { NAV_ITEMS } from "@/lib/nav";
+import type { NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
-export function Sidebar() {
+/**
+ * Menu lateral recolhível.
+ * No celular ele fica sempre estreito (só ícones); no computador você pode recolher ou expandir.
+ */
+export function Sidebar({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -29,7 +33,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2" aria-label="Menu principal">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link

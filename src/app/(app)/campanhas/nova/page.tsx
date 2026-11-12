@@ -4,12 +4,12 @@ import { CampaignForm } from "@/components/campaign-form";
 import { buttonStyles } from "@/components/ui/button";
 import { getCampaignsRepository } from "@/lib/campaigns";
 import { getLeadsRepository } from "@/lib/leads";
-import { requireUser } from "@/lib/require-user";
+import { requirePermission } from "@/lib/require-user";
 
 export const metadata: Metadata = { title: "Nova campanha" };
 
 export default async function NewCampaignPage() {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   const [templates, leads] = await Promise.all([
     getCampaignsRepository().listTemplates(user.clientId),
     getLeadsRepository().list(user.clientId),

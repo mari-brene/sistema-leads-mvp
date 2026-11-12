@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { readAudit } from "@/lib/audit";
 import { formatDateTime } from "@/lib/format";
-import { requireUser } from "@/lib/require-user";
+import { requirePermission } from "@/lib/require-user";
 
 export const metadata: Metadata = { title: "Auditoria" };
 
 export default async function AuditPage() {
-  const user = await requireUser();
+  const user = await requirePermission("audit");
   const { entries, lastCron } = await readAudit(user.clientId);
 
   return (

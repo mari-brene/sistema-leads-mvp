@@ -6,12 +6,12 @@ import { buttonStyles } from "@/components/ui/button";
 import { getCampaignsRepository } from "@/lib/campaigns";
 import { describeWindow } from "@/lib/campaigns/time";
 import { formatDateTime } from "@/lib/format";
-import { requireUser } from "@/lib/require-user";
+import { requirePermission } from "@/lib/require-user";
 
 export const metadata: Metadata = { title: "Campanhas" };
 
 export default async function CampaignsPage() {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   const repo = getCampaignsRepository();
   const [campaigns, usage, templates, settings] = await Promise.all([
     repo.listCampaigns(user.clientId),

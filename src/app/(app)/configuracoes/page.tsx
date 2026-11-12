@@ -3,12 +3,12 @@ import { KnowledgeForm } from "@/components/message-forms";
 import { SettingsForm } from "@/components/settings-form";
 import { getCampaignsRepository } from "@/lib/campaigns";
 import { getInboxRepository } from "@/lib/inbox";
-import { requireUser } from "@/lib/require-user";
+import { requirePermission } from "@/lib/require-user";
 
 export const metadata: Metadata = { title: "Configurações" };
 
 export default async function SettingsPage() {
-  const user = await requireUser();
+  const user = await requirePermission("settings");
   const [settings, inbox] = await Promise.all([
     getCampaignsRepository().getSettings(user.clientId),
     getInboxRepository().getSettings(user.clientId),

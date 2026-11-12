@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getCampaignsRepository, getSender } from "@/lib/campaigns";
 import { CAMPAIGN_STAGES } from "@/lib/campaigns/audience";
 import { isStageId, type StageId } from "@/lib/leads/types";
-import { requireUser } from "@/lib/require-user";
+import { requirePermission } from "@/lib/require-user";
 
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
@@ -17,7 +17,7 @@ function text(formData: FormData, name: string): string {
 export type TemplateFormState = { error?: string; saved?: boolean; values?: { name: string; body: string; metaName: string } } | undefined;
 
 export async function addTemplateAction(_prev: TemplateFormState, formData: FormData): Promise<TemplateFormState> {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   const values = { name: text(formData, "name"), body: text(formData, "body"), metaName: text(formData, "metaName") };
 
   const result = await getCampaignsRepository().addTemplate(user.clientId, values);
@@ -29,14 +29,14 @@ export async function addTemplateAction(_prev: TemplateFormState, formData: Form
 
 /** Marca o modelo como aprovado (na simulação é um atalho; no WhatsApp real, você confirma o que a Meta já aprovou). */
 export async function approveTemplateAction(formData: FormData): Promise<void> {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   const repo = getCampaignsRepository();
   await repo.approveTemplate(user.clientId, text(formData, "id"));
   revalidatePath("/campanhas/modelos");
 }
 
 export async function deleteTemplateAction(formData: FormData): Promise<void> {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   await getCampaignsRepository().removeTemplate(user.clientId, text(formData, "id"));
   revalidatePath("/campanhas/modelos");
 }
@@ -52,7 +52,7 @@ export type AudiencePreview = {
 
 /** Mostra quantas pessoas receberiam a campanha com as etapas e a tag escolhidas (sem criar nada). */
 export async function previewAudienceAction(stages: unknown, tag: unknown): Promise<AudiencePreview> {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   const chosen = (Array.isArray(stages) ? stages : []).filter(
     (stage): stage is StageId => isStageId(stage) && CAMPAIGN_STAGES.includes(stage),
   );
@@ -68,7 +68,7 @@ export async function previewAudienceAction(stages: unknown, tag: unknown): Prom
 export type CampaignFormState = { error?: string; values?: { name: string; templateId: string; tag: string; stages: string[] } } | undefined;
 
 export async function createCampaignAction(_prev: CampaignFormState, formData: FormData): Promise<CampaignFormState> {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   const values = {
     name: text(formData, "name"),
     templateId: text(formData, "templateId"),
@@ -88,7 +88,7 @@ export async function createCampaignAction(_prev: CampaignFormState, formData: F
 export type ControlResult = { ok: boolean; error?: string };
 
 export async function controlCampaignAction(id: string, action: string): Promise<ControlResult> {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   if (action !== "start" && action !== "pause" && action !== "cancel") return { ok: false, error: "Ação inválida." };
 
   const result = await getCampaignsRepository().changeCampaign(user.clientId, String(id), action);
@@ -98,7 +98,7 @@ export async function controlCampaignAction(id: string, action: string): Promise
 }
 
 export async function deleteCampaignAction(formData: FormData): Promise<void> {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   await getCampaignsRepository().removeCampaign(user.clientId, text(formData, "id"));
   revalidatePath("/campanhas");
   redirect("/campanhas");
@@ -110,7 +110,7 @@ export type BatchActionResult =
 
 /** Envia o próximo lote da fila (até 10 mensagens). Na fase 7 isto passa a ser feito sozinho por um agendador. */
 export async function runBatchAction(): Promise<BatchActionResult> {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   const result = await getCampaignsRepository().runBatch(user.clientId, getSender());
 
   revalidatePath("/campanhas");

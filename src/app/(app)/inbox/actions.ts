@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { config } from "@/lib/config";
 import { getInboxRepository } from "@/lib/inbox";
-import { requireUser } from "@/lib/require-user";
+import { requirePermission, requireUser } from "@/lib/require-user";
 
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
@@ -61,7 +61,7 @@ export async function simulateInboundAction(_prev: InboxFormState, formData: For
 export type KnowledgeFormState = { error?: string; saved?: boolean } | undefined;
 
 export async function saveKnowledgeAction(_prev: KnowledgeFormState, formData: FormData): Promise<KnowledgeFormState> {
-  const user = await requireUser();
+  const user = await requirePermission("settings");
   const result = await getInboxRepository().saveSettings(user.clientId, {
     aiEnabled: formData.get("aiEnabled") === "on",
     businessName: text(formData, "businessName"),

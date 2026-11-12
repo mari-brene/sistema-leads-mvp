@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { AuthUser } from "@/lib/auth";
 import { getSession } from "@/lib/session";
 import { resolveScope, type Role } from "@/lib/tenancy";
+import { can, type Permission } from "@/lib/tenancy/permissions";
 
 /** Quem está logado, mais o cliente em que está trabalhando e o papel nele. */
 export type ScopedUser = AuthUser & { clientId: string; role: Role };
@@ -15,4 +16,14 @@ export async function requireUser(): Promise<ScopedUser> {
   if (!user) redirect("/login");
   const scope = await resolveScope(user.id);
   return { ...user, clientId: scope.clientId, role: scope.role };
+}
+
+/**
+ * Igual ao requireUser, mas só deixa passar quem tem a permissão. Quem não tem volta para o Kanban.
+ * Use em TODA tela e ação que a permissão protege: esconder o botão no menu não basta.
+ */
+export async function requirePermission(permission: Permission): Promise<ScopedUser> {
+  const user = await requireUser();
+  if (!can(user.role, permission)) redirect("/kanban");
+  return user;
 }

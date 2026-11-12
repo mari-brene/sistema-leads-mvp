@@ -6,13 +6,13 @@ import { Button, buttonStyles } from "@/components/ui/button";
 import { getCampaignsRepository } from "@/lib/campaigns";
 import { formatDateTime } from "@/lib/format";
 import { config } from "@/lib/config";
-import { requireUser } from "@/lib/require-user";
+import { requirePermission } from "@/lib/require-user";
 import { approveTemplateAction, deleteTemplateAction } from "../actions";
 
 export const metadata: Metadata = { title: "Modelos de mensagem" };
 
 export default async function TemplatesPage() {
-  const user = await requireUser();
+  const user = await requirePermission("campaigns");
   const templates = (await getCampaignsRepository().listTemplates(user.clientId)).sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt),
   );

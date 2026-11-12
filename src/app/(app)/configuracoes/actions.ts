@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { getCampaignsRepository } from "@/lib/campaigns";
 import { validateSettings } from "@/lib/campaigns/logic";
-import { requireUser } from "@/lib/require-user";
+import { requirePermission } from "@/lib/require-user";
 
 export type SettingsFormState = { error?: string; saved?: boolean } | undefined;
 
 export async function saveSettingsAction(_prev: SettingsFormState, formData: FormData): Promise<SettingsFormState> {
-  const user = await requireUser();
+  const user = await requirePermission("settings");
 
   const parsed = validateSettings({
     dailyLimit: formData.get("dailyLimit"),
