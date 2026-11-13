@@ -8,13 +8,14 @@ import type { Role } from "./types";
  *  settings  = configurações do cliente (limites, horários, IA, base de conhecimento)
  *  audit     = ver o registro de auditoria
  *  team      = convidar pessoas e gerenciar a equipe do cliente
+ *  export    = baixar os leads do cliente em CSV
  *  admin     = telas da agência (migração, clientes)
  */
-export type Permission = "campaigns" | "settings" | "audit" | "team" | "admin";
+export type Permission = "campaigns" | "settings" | "audit" | "team" | "export" | "admin";
 
 const GRANTS: Record<Role, readonly Permission[]> = {
-  agency_admin: ["campaigns", "settings", "audit", "team", "admin"],
-  client_manager: ["campaigns", "settings", "audit", "team"],
+  agency_admin: ["campaigns", "settings", "audit", "team", "export", "admin"],
+  client_manager: ["campaigns", "settings", "audit", "team", "export"],
   agent: [],
 };
 

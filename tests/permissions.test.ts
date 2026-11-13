@@ -3,7 +3,7 @@ import { NAV_ITEMS } from "@/lib/nav";
 import { can, navForRole, type Permission } from "@/lib/tenancy/permissions";
 import type { Role } from "@/lib/tenancy";
 
-const ALL: Permission[] = ["campaigns", "settings", "audit", "team", "admin"];
+const ALL: Permission[] = ["campaigns", "settings", "audit", "team", "export", "admin"];
 
 describe("permissões por papel", () => {
   it("administrador da agência pode tudo", () => {
@@ -15,6 +15,7 @@ describe("permissões por papel", () => {
     expect(can("client_manager", "settings")).toBe(true);
     expect(can("client_manager", "audit")).toBe(true);
     expect(can("client_manager", "team")).toBe(true);
+    expect(can("client_manager", "export")).toBe(true);
     expect(can("client_manager", "admin")).toBe(false);
   });
 

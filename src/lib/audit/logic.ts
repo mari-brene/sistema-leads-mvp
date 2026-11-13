@@ -1,4 +1,4 @@
-export type AuditKind = "agendador" | "erro" | "whatsapp";
+export type AuditKind = "agendador" | "erro" | "whatsapp" | "exportacao";
 
 export type AuditEntry = {
   id: string;
