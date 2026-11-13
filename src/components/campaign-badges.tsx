@@ -18,7 +18,7 @@ const CAMPAIGN_TONE: Record<CampaignStatus, BadgeTone> = {
 
 const TEMPLATE_TONE: Record<TemplateStatus, BadgeTone> = { pendente: "amber", aprovado: "green", rejeitado: "red" };
 
-const MESSAGE_TONE: Record<MessageStatus, BadgeTone> = { na_fila: "slate", enviada: "green", falhou: "red", pulada: "amber" };
+const MESSAGE_TONE: Record<MessageStatus, BadgeTone> = { na_fila: "slate", enviando: "sky", enviada: "green", falhou: "red", pulada: "amber" };
 
 export function CampaignStatusBadge({ status }: { status: CampaignStatus }) {
   return <Badge tone={CAMPAIGN_TONE[status]}>{CAMPAIGN_STATUS_LABEL[status]}</Badge>;

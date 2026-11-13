@@ -23,6 +23,7 @@ export function fakeTables(seed: Record<string, Row[]> = {}, keys: Record<string
       if (["select", "order", "limit", "offset", "on_conflict"].includes(name)) continue;
       if (value === "is.null") filters.push((row) => row[name] === null || row[name] === undefined);
       else if (value.startsWith("gt.")) filters.push((row) => row[name] != null && String(row[name]) > value.slice(3));
+      else if (value.startsWith("lt.")) filters.push((row) => row[name] != null && String(row[name]) < value.slice(3));
       else if (value.startsWith("eq.")) filters.push((row) => String(row[name] ?? "") === value.slice(3));
       else if (value.startsWith("in.(")) {
         const list = value.slice(4, -1).split(",").map((s) => s.replace(/^"|"$/g, ""));
@@ -35,7 +36,18 @@ export function fakeTables(seed: Record<string, Row[]> = {}, keys: Record<string
     if (init.method === "GET") {
       const limit = Number(p.get("limit") ?? 1000);
       const offset = Number(p.get("offset") ?? 0);
-      return ok(rows.filter(matches).sort((a, b) => keyOf(a).localeCompare(keyOf(b))).slice(offset, offset + limit));
+      const order = (p.get("order") ?? "").split(",").filter((part) => part.endsWith(".desc")).map((part) => part.replace(".desc", ""));
+      const sorter = order.length
+        ? (a: Row, b: Row) => {
+            for (const column of order) {
+              const left = String(a[column] ?? "");
+              const right = String(b[column] ?? "");
+              if (left !== right) return right.localeCompare(left);
+            }
+            return 0;
+          }
+        : (a: Row, b: Row) => keyOf(a).localeCompare(keyOf(b));
+      return ok(rows.filter(matches).sort(sorter).slice(offset, offset + limit));
     }
     if (init.method === "POST") {
       const prefer = init.headers?.Prefer ?? "";

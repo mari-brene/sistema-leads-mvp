@@ -28,6 +28,11 @@ export interface CampaignsStore {
   /** Grava só o que mudou entre "antes" e "depois". */
   save(clientId: string, before: Slice, after: Slice): Promise<void>;
   saveSettings(clientId: string, settings: Settings): Promise<void>;
+  /**
+   * Reserva mensagens "na fila" para esta rodada (passam a "enviando") e devolve só as que foram reservadas.
+   * Se outra rodada reservou antes, a mensagem não volta: ninguém recebe duas vezes.
+   */
+  claimMessages(clientId: string, ids: string[], at: string): Promise<string[]>;
   /** Clientes que têm alguma campanha em andamento (usado pelo agendador). */
   listActiveClientIds(): Promise<string[]>;
 }
@@ -89,6 +94,19 @@ export function createCollectionStore(): CampaignsStore {
       await writeJson("campaigns", { ...data, settings: { ...data.settings, [clientId]: settings } });
     },
 
+    async claimMessages(clientId, ids, at) {
+      const wanted = new Set(ids);
+      const data = await readAll();
+      const claimed: string[] = [];
+      const messages = data.messages.map((message) => {
+        if (message.userId !== clientId || message.status !== "na_fila" || !wanted.has(message.id)) return message;
+        claimed.push(message.id);
+        return { ...message, status: "enviando" as const, sentAt: at };
+      });
+      if (claimed.length > 0) await writeJson("campaigns", { ...data, messages });
+      return claimed;
+    },
+
     async listActiveClientIds() {
       const data = await readAll();
       return [...new Set(data.campaigns.filter((campaign) => campaign.status === "em_andamento").map((campaign) => campaign.userId))];
@@ -145,6 +163,24 @@ export function createTableStore(options: RestOptions): CampaignsStore {
     },
 
     saveSettings: upsertSettings,
+
+    async claimMessages(clientId, ids, at) {
+      const claimed: string[] = [];
+      for (let i = 0; i < ids.length; i += 50) {
+        const list = ids.slice(i, i + 50).map((id) => `"${id}"`).join(",");
+        const response = await rest.call(
+          "campaign_messages",
+          "PATCH",
+          `?${of(clientId)}&status=eq.na_fila&id=in.(${encodeURIComponent(list)})`,
+          { status: "enviando", sent_at: at },
+          "return=representation",
+        );
+        if (!response.ok) rest.fail(response.status, "reservar", "campaign_messages");
+        const rows = (await response.json()) as { id: string }[];
+        claimed.push(...rows.map((row) => row.id));
+      }
+      return claimed;
+    },
 
     async listActiveClientIds() {
       const rows = await rest.fetchAll<CampaignRow>("campaigns", "status=eq.em_andamento", "id");

@@ -1,65 +1,30 @@
-import { randomUUID } from "node:crypto";
-import { readJson, writeJson } from "@/lib/storage";
+import { config } from "@/lib/config";
+import { createCollectionStore, createTableStore, type AuditStore } from "./store";
+import type { AuditData, NewEntry } from "./logic";
 
-export type AuditKind = "agendador" | "erro" | "whatsapp";
-
-export type AuditEntry = {
-  id: string;
-  at: string;
-  /** null = evento do sistema todo. */
-  userId: string | null;
-  kind: AuditKind;
-  text: string;
-};
-
-export type AuditData = {
-  entries: AuditEntry[];
-  lastCron: { at: string; text: string } | null;
-};
-
-export const MAX_ENTRIES = 300;
-
-export type NewEntry = { userId: string | null; kind: AuditKind; text: string };
-
-export function addEntries(data: AuditData, entries: NewEntry[], at: string, newId: () => string): AuditData {
-  const added: AuditEntry[] = entries.map((entry) => ({ id: newId(), at, userId: entry.userId, kind: entry.kind, text: entry.text.slice(0, 300) }));
-  return { ...data, entries: [...added.reverse(), ...data.entries].slice(0, MAX_ENTRIES) };
-}
-
-export function emptyAudit(): AuditData {
-  return { entries: [], lastCron: null };
-}
-
-const globalWithLock = globalThis as typeof globalThis & { __auditLock?: Promise<unknown> };
-
-function withLock<T>(task: () => Promise<T>): Promise<T> {
-  const previous = globalWithLock.__auditLock ?? Promise.resolve();
-  const run = previous.then(task, task);
-  globalWithLock.__auditLock = run.catch(() => undefined);
-  return run;
-}
-
-async function load(): Promise<AuditData> {
-  const data = await readJson<Partial<AuditData> | null>("audit", null);
-  return { entries: Array.isArray(data?.entries) ? (data?.entries as AuditEntry[]) : [], lastCron: data?.lastCron ?? null };
-}
+export { addEntries, emptyAudit, MAX_ENTRIES } from "./logic";
+export type { AuditData, AuditEntry, AuditKind, NewEntry } from "./logic";
 
 export interface AuditSink {
   log(entries: NewEntry[], lastCronText: string): Promise<void>;
 }
 
-export function createAuditSink(now: () => Date = () => new Date()): AuditSink {
-  return {
-    log: (entries, lastCronText) =>
-      withLock(async () => {
-        const at = now().toISOString();
-        const data = addEntries(await load(), entries, at, () => randomUUID());
-        await writeJson("audit", { ...data, lastCron: { at, text: lastCronText.slice(0, 300) } });
-      }),
-  };
+const collectionStore = createCollectionStore();
+let tableStore: AuditStore | null = null;
+
+/** Coleção/arquivo (padrão) ou, com DATA_BACKEND=supabase e AUDIT_STORE=table, tabelas próprias. Escolhido a cada chamada. */
+export function currentAuditStore(): AuditStore {
+  if (config.dataBackend === "supabase" && config.auditStore === "table") {
+    tableStore ??= createTableStore({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey });
+    return tableStore;
+  }
+  return collectionStore;
 }
 
-export async function readAudit(userId: string): Promise<AuditData> {
-  const data = await load();
-  return { ...data, entries: data.entries.filter((entry) => entry.userId === null || entry.userId === userId) };
+export function createAuditSink(now: () => Date = () => new Date(), store?: AuditStore): AuditSink {
+  return { log: (entries, lastCronText) => (store ?? currentAuditStore()).add(entries, now(), lastCronText) };
+}
+
+export function readAudit(clientId: string, store?: AuditStore): Promise<AuditData> {
+  return (store ?? currentAuditStore()).read(clientId);
 }

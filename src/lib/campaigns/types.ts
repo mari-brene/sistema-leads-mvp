@@ -83,10 +83,11 @@ export type Campaign = {
   finishedAt: string | null;
 };
 
-export type MessageStatus = "na_fila" | "enviada" | "falhou" | "pulada";
+export type MessageStatus = "na_fila" | "enviando" | "enviada" | "falhou" | "pulada";
 
 export const MESSAGE_STATUS_LABEL: Record<MessageStatus, string> = {
   na_fila: "Na fila",
+  enviando: "Enviando",
   enviada: "Enviada",
   falhou: "Falhou",
   pulada: "Pulada",
