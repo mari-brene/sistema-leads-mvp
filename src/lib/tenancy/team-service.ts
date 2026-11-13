@@ -94,7 +94,14 @@ export function createTeamService(deps: TeamDeps) {
     return { ok: true, clientId: invitation.clientId, role: invitation.role };
   }
 
-  return { createInvite, revokeInvite, view, changeRole, removeMember, acceptInvite };
+  /** Só confere se o link ainda vale (não usa o convite). Serve para liberar o cadastro apenas a quem tem convite de verdade. */
+  async function inviteIsUsable(token: string): Promise<boolean> {
+    const invite = await deps.invites.byTokenHash(hashToken(token));
+    const before = await deps.tenancy.load();
+    return team.checkInvite(invite, before.memberships, "", now()).ok;
+  }
+
+  return { createInvite, revokeInvite, view, changeRole, removeMember, acceptInvite, inviteIsUsable };
 }
 
 export function getInvitationsStore(): InvitationsStore {

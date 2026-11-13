@@ -152,11 +152,28 @@ describe("login pelo Supabase (com respostas de mentira)", () => {
     const { adapter } = auth(400, { error: "invalid_grant" });
     expect(await adapter.signIn("a@x.com", "errada")).toEqual({ ok: false, error: "E-mail ou senha incorretos." });
   });
-  it("cadastro pela tela fica desligado", async () => {
+  it("cria a conta pela API de administração, já confirmada, com e-mail normalizado", async () => {
+    const { adapter, calls } = auth(200, { id, email: "ana@x.com", user_metadata: { name: "Ana" } });
+    const r = await adapter.signUp({ name: " Ana ", email: " Ana@X.com ", password: "12345678" });
+    expect(r).toEqual({ ok: true, user: { id, email: "ana@x.com", name: "Ana" } });
+    expect(calls[0].url).toBe("https://abc.supabase.co/auth/v1/admin/users");
+    expect(calls[0].headers.apikey).toBe("sb_secret_s");
+    const sent = JSON.parse(calls[0].body as string);
+    expect(sent).toMatchObject({ email: "ana@x.com", email_confirm: true, user_metadata: { name: "Ana" } });
+  });
+  it("cadastro recusa e-mail inválido e senha curta sem chamar a rede", async () => {
     const { adapter, calls } = auth(200, {});
-    const r = await adapter.signUp({ name: "x", email: "a@x.com", password: "12345678" });
-    expect(r.ok).toBe(false);
+    expect((await adapter.signUp({ name: "x", email: "sem-arroba", password: "12345678" })).ok).toBe(false);
+    expect((await adapter.signUp({ name: "x", email: "a@x.com", password: "123" })).ok).toBe(false);
     expect(calls).toHaveLength(0);
+  });
+  it("e-mail já cadastrado e falha do serviço dão mensagens simples", async () => {
+    const dup = auth(422, { error_code: "email_exists" });
+    const r1 = await dup.adapter.signUp({ name: "x", email: "a@x.com", password: "12345678" });
+    expect(r1.ok).toBe(false);
+    const down = auth(500, {});
+    const r2 = await down.adapter.signUp({ name: "x", email: "a@x.com", password: "12345678" });
+    expect(r2.ok).toBe(false);
   });
   it("busca usuário pelo id usando a chave secreta, e recusa ids estranhos sem chamar a rede", async () => {
     const { adapter, calls } = auth(200, { id, email: "ana@x.com" });
