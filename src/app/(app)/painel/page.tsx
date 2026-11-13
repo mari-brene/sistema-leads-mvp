@@ -41,14 +41,7 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Painel</h1>
           <p className="mt-1 text-slate-600">Números de {user.clientName || "este cliente"}. Outros clientes não aparecem aqui.</p>
         </div>
-        {can(user.role, "export") ? (
-          <a
-            href="/painel/exportar"
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-soft hover:bg-slate-50"
-          >
-            Baixar leads em CSV
-          </a>
-        ) : null}
+
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
