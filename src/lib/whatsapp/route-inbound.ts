@@ -30,7 +30,7 @@ export async function routeInbound(deps: Deps, messages: InboundForNumber[]): Pr
       total.ignored += group.length;
       continue;
     }
-    const summary = await processInbound({ leads: deps.leads, inbox: deps.inbox, audit: deps.audit, ownerId: clientId }, group.map(({ phoneNumberId: _n, ...message }) => message));
+    const summary = await processInbound({ leads: deps.leads, inbox: deps.inbox, audit: deps.audit, ownerId: clientId }, group.map((message) => ({ from: message.from, id: message.id, type: message.type, text: message.text })));
     total.received += summary.received;
     total.replied += summary.replied;
     total.toYou += summary.toYou;
