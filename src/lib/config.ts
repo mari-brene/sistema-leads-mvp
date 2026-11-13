@@ -86,6 +86,11 @@ export const config = {
     return process.env.CAMPAIGNS_STORE === "table" ? "table" : "collection";
   },
 
+  /** Onde fica a caixa de entrada: "collection" (padrão) ou "table" (tabelas próprias do Supabase). */
+  get inboxStore(): "collection" | "table" {
+    return process.env.INBOX_STORE === "table" ? "table" : "collection";
+  },
+
   /** Endereço do projeto no Supabase (ex.: https://abcd.supabase.co). */
   get supabaseUrl(): string {
     return (process.env.SUPABASE_URL ?? "").trim().replace(/\/+$/, "");

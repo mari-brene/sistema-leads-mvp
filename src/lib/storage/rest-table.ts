@@ -54,20 +54,23 @@ export function createRest(options: RestOptions) {
    * Grava a diferença entre "antes" e "depois" de uma tabela que tem id e client_id:
    * novas (insert), alteradas (update, sempre com o filtro do cliente) e removidas (delete, idem).
    */
-  async function syncRows<T extends { id: string }>(
+  async function syncRows<T>(
     table: string,
     clientId: string,
     before: T[],
     after: T[],
     toRow: (item: T) => { client_id: string } & Record<string, unknown>,
+    /** Coluna que identifica a linha dentro do cliente (padrão: "id"). */
+    keyColumn = "id",
   ): Promise<void> {
+    const keyOf = (item: T) => String(toRow(item)[keyColumn]);
     const ofClient = `client_id=eq.${encodeURIComponent(clientId)}`;
-    const beforeById = new Map(before.map((item) => [item.id, JSON.stringify(toRow(item))]));
-    const afterIds = new Set(after.map((item) => item.id));
+    const beforeById = new Map(before.map((item) => [keyOf(item), JSON.stringify(toRow(item))]));
+    const afterIds = new Set(after.map(keyOf));
 
-    const created = after.filter((item) => !beforeById.has(item.id));
-    const changed = after.filter((item) => beforeById.has(item.id) && beforeById.get(item.id) !== JSON.stringify(toRow(item)));
-    const removed = before.filter((item) => !afterIds.has(item.id));
+    const created = after.filter((item) => !beforeById.has(keyOf(item)));
+    const changed = after.filter((item) => beforeById.has(keyOf(item)) && beforeById.get(keyOf(item)) !== JSON.stringify(toRow(item)));
+    const removed = before.filter((item) => !afterIds.has(keyOf(item)));
 
     for (const item of [...created, ...changed]) {
       if (toRow(item).client_id !== clientId) throw new Error("Registro de outro cliente: gravação bloqueada.");
@@ -78,12 +81,12 @@ export function createRest(options: RestOptions) {
       if (!response.ok) fail(response.status, "gravar", table);
     }
     await inBatches(changed, async (item) => {
-      const response = await call(table, "PATCH", `?id=eq.${encodeURIComponent(item.id)}&${ofClient}`, toRow(item), "return=minimal");
+      const response = await call(table, "PATCH", `?${keyColumn}=eq.${encodeURIComponent(keyOf(item))}&${ofClient}`, toRow(item), "return=minimal");
       if (!response.ok) fail(response.status, "gravar", table);
     });
     for (let i = 0; i < removed.length; i += 50) {
-      const ids = removed.slice(i, i + 50).map((item) => `"${item.id}"`).join(",");
-      const response = await call(table, "DELETE", `?${ofClient}&id=in.(${encodeURIComponent(ids)})`, undefined, "return=minimal");
+      const ids = removed.slice(i, i + 50).map((item) => `"${keyOf(item)}"`).join(",");
+      const response = await call(table, "DELETE", `?${ofClient}&${keyColumn}=in.(${encodeURIComponent(ids)})`, undefined, "return=minimal");
       if (!response.ok) fail(response.status, "apagar", table);
     }
   }

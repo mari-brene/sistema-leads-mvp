@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { readJson, writeJson } from "@/lib/storage";
 import type { LeadsRepository } from "@/lib/leads";
 import type { Lead } from "@/lib/leads/types";
 import type { WhatsAppSender } from "@/lib/campaigns/sender";
 import type { AiProvider, AiTurn } from "./ai";
+import { createCollectionStore, type ClientInbox, type InboxStore } from "./store";
 import { canHumanReply, dayKey, decideInbound, validateInboxSettings, validateMessageText } from "./logic";
 import {
   DEFAULT_INBOX_SETTINGS,
@@ -13,8 +13,7 @@ import {
 } from "./types";
 
 /**
- * Repositório de SIMULAÇÃO da caixa de entrada: arquivo local (.data/inbox.json).
- * Na fase de contas reais, um repositório do Supabase com a mesma forma entra no lugar.
+ * Repositório da caixa de entrada. As regras ficam aqui e em logic.ts; onde os dados moram é escolhido pelo "store" (store.ts).
  */
 
 type Simple = { ok: true } | { ok: false; error: string };
@@ -54,55 +53,24 @@ export interface InboxRepository {
   handBack(userId: string, leadId: string): Promise<Simple>;
 }
 
-type FileData = {
-  settings: Record<string, InboxSettings>;
-  conversations: Conversation[];
-  messages: InboxMessage[];
-  /** "usuário|2026-10-21" → respostas da IA nesse dia. */
-  aiUsage: Record<string, number>;
-};
-
-async function readAll(): Promise<FileData> {
-  const data = (await readJson<Partial<FileData> | null>("inbox", null)) ?? {};
-  return {
-    settings: data.settings ?? {},
-    conversations: Array.isArray(data.conversations) ? data.conversations : [],
-    messages: Array.isArray(data.messages) ? data.messages : [],
-    aiUsage: data.aiUsage ?? {},
-  };
-}
-
-async function writeAll(data: FileData): Promise<void> {
-  await writeJson("inbox", data);
-}
-
-const globalWithLock = globalThis as typeof globalThis & { __inboxLock?: Promise<unknown> };
-
-function withLock<T>(task: () => Promise<T>): Promise<T> {
-  const previous = globalWithLock.__inboxLock ?? Promise.resolve();
-  const run = previous.then(task, task);
-  globalWithLock.__inboxLock = run.catch(() => undefined);
-  return run;
-}
-
-/** Lê, deixa a função alterar, e grava. Tudo dentro da fila (uma gravação de cada vez). */
-function edit<T>(change: (data: FileData) => T): Promise<T> {
-  return withLock(async () => {
-    const data = await readAll();
-    const result = change(data);
-    await writeAll(data);
-    return result;
-  });
-}
-
 type Deps = {
   leads: LeadsRepository;
   sender: () => WhatsAppSender;
   ai: () => AiProvider;
+  /** Onde guardar (padrão: arquivo/coleção; index.ts escolhe tabelas com INBOX_STORE=table). */
+  store?: InboxStore;
   now?: () => Date;
 };
 
 const HISTORY_TURNS = 8;
+
+/** Ordem cronológica. Se duas mensagens têm o mesmo horário, a recebida vem antes da resposta. */
+function byTime(a: InboxMessage, b: InboxMessage): number {
+  const diff = a.at.localeCompare(b.at);
+  if (diff !== 0) return diff;
+  if (a.direction !== b.direction) return a.direction === "in" ? -1 : 1;
+  return 0;
+}
 
 function preview(text: string): string {
   return text.replace(/\s+/g, " ").slice(0, 80);
@@ -123,22 +91,24 @@ function newConversation(userId: string, leadId: string, nowIso: string): Conver
   };
 }
 
-function findConversation(data: FileData, userId: string, leadId: string): Conversation | undefined {
+function findConversation(data: ClientInbox, userId: string, leadId: string): Conversation | undefined {
   return data.conversations.find((c) => c.userId === userId && c.leadId === leadId);
 }
 
-function pushMessage(data: FileData, message: Omit<InboxMessage, "id">): InboxMessage {
+function pushMessage(data: ClientInbox, message: Omit<InboxMessage, "id">): InboxMessage {
   const full: InboxMessage = { id: randomUUID(), ...message };
   data.messages.push(full);
   return full;
 }
 
 export function createInboxRepository(deps: Deps): InboxRepository {
+  const store = deps.store ?? createCollectionStore();
+  const { withLock, edit } = store;
   const clock = () => (deps.now ? deps.now() : new Date());
 
   /** Registra uma mensagem enviada por nós e atualiza a conversa. */
   function recordOut(
-    data: FileData,
+    data: ClientInbox,
     convo: Conversation,
     message: { author: "ia" | "voce" | "sistema"; text: string; status: "enviada" | "falhou"; error?: string },
     nowIso: string,
@@ -158,7 +128,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
   }
 
   async function handoff(userId: string, leadId: string, reason: string): Promise<void> {
-    await edit((data) => {
+    await edit(userId, (data) => {
       const convo = findConversation(data, userId, leadId);
       if (!convo) return;
       convo.mode = "humano";
@@ -169,21 +139,20 @@ export function createInboxRepository(deps: Deps): InboxRepository {
 
   return {
     async getSettings(userId) {
-      const data = await readAll();
-      return { ...DEFAULT_INBOX_SETTINGS, ...(data.settings[userId] ?? {}) };
+      return { ...DEFAULT_INBOX_SETTINGS, ...((await store.read(userId)).settings ?? {}) };
     },
 
     async saveSettings(userId, input) {
       const parsed = validateInboxSettings(input);
       if (!parsed.ok) return parsed;
-      await edit((data) => {
-        data.settings[userId] = parsed.value;
+      await edit(userId, (data) => {
+        data.settings = parsed.value;
       });
       return { ok: true };
     },
 
     async listConversations(userId) {
-      const [data, leads] = await Promise.all([readAll(), deps.leads.list(userId)]);
+      const [data, leads] = await Promise.all([store.read(userId), deps.leads.list(userId)]);
       const byId = new Map(leads.map((lead) => [lead.id, lead]));
       const rows: ConversationRow[] = [];
       for (const conversation of data.conversations) {
@@ -203,12 +172,12 @@ export function createInboxRepository(deps: Deps): InboxRepository {
     },
 
     async getThread(userId, leadId) {
-      const [data, lead] = await Promise.all([readAll(), deps.leads.get(userId, leadId)]);
+      const [data, lead] = await Promise.all([store.read(userId), deps.leads.get(userId, leadId)]);
       if (!lead) return null;
       const conversation = findConversation(data, userId, leadId) ?? null;
       const messages = data.messages
         .filter((m) => m.userId === userId && m.leadId === leadId)
-        .sort((a, b) => a.at.localeCompare(b.at));
+        .sort(byTime);
       return {
         lead,
         conversation,
@@ -232,7 +201,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       const usageKey = `${userId}|${dayKey(now)}`;
 
       // ETAPA A (dentro da fila): guarda a mensagem recebida e decide o que fazer.
-      const plan = await edit((data) => {
+      const plan = await edit(userId, (data) => {
         if (opts?.externalId && data.messages.some((m) => m.userId === userId && m.externalId === opts.externalId)) {
           return { duplicate: true as const };
         }
@@ -243,7 +212,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
         }
         const history: AiTurn[] = data.messages
           .filter((m) => m.userId === userId && m.leadId === leadId && (m.author === "contato" || m.author === "ia" || m.author === "voce"))
-          .sort((a, b) => a.at.localeCompare(b.at))
+          .sort(byTime)
           .slice(-HISTORY_TURNS)
           .map((m) => ({ from: m.author === "contato" ? "contato" : "assistente", text: m.text }));
 
@@ -294,7 +263,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
         await deps.leads.registerOptOut(userId, leadId);
         const confirmation = "Tudo certo! Você não receberá mais mensagens de marketing nossas. Obrigado e até mais.";
         const sent = await deps.sender().send({ to: lead.phone, text: confirmation, templateName: "confirmacao-saida", purpose: "service" });
-        await edit((data) => {
+        await edit(userId, (data) => {
           const convo = findConversation(data, userId, leadId);
           if (!convo) return;
           recordOut(
@@ -330,14 +299,14 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       const [freshLead, stillAi] = await Promise.all([
         deps.leads.get(userId, leadId),
         withLock(async () => {
-          const convo = findConversation(await readAll(), userId, leadId);
+          const convo = findConversation(await store.read(userId), userId, leadId);
           return convo?.mode === "ia";
         }),
       ]);
       if (!freshLead || freshLead.optOut || !freshLead.phone || !stillAi) return { ok: true, outcome: "para_voce" };
 
       const sent = await deps.sender().send({ to: freshLead.phone, text: result.text, templateName: "resposta-ia", purpose: "service" });
-      await edit((data) => {
+      await edit(userId, (data) => {
         const convo = findConversation(data, userId, leadId);
         if (!convo) return;
         recordOut(
@@ -361,7 +330,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       const checked = validateMessageText(rawText);
       if (!checked.ok) return checked;
 
-      const [lead, data] = await Promise.all([deps.leads.get(userId, leadId), readAll()]);
+      const [lead, data] = await Promise.all([deps.leads.get(userId, leadId), store.read(userId)]);
       if (!lead) return { ok: false, error: "Lead não encontrado." };
       if (lead.optOut) return { ok: false, error: "Este contato saiu da lista. Não é possível enviar mensagens." };
       if (!lead.phone) return { ok: false, error: "Este lead não tem telefone." };
@@ -375,7 +344,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       }
 
       const sent = await deps.sender().send({ to: lead.phone, text: checked.text, templateName: "resposta-manual", purpose: "service" });
-      return edit((fresh) => {
+      return edit(userId, (fresh) => {
         const current = findConversation(fresh, userId, leadId);
         if (!current) return { ok: false, error: "Conversa não encontrada." } as const;
         recordOut(
@@ -393,7 +362,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
     },
 
     async takeOver(userId, leadId) {
-      return edit((data) => {
+      return edit(userId, (data) => {
         const convo = findConversation(data, userId, leadId);
         if (!convo) return { ok: false, error: "Conversa não encontrada." } as const;
         convo.mode = "humano";
@@ -407,7 +376,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       const lead = await deps.leads.get(userId, leadId);
       if (!lead) return { ok: false, error: "Lead não encontrado." };
       if (lead.optOut) return { ok: false, error: "Este contato saiu da lista; a IA não pode responder." };
-      return edit((data) => {
+      return edit(userId, (data) => {
         const convo = findConversation(data, userId, leadId);
         if (!convo) return { ok: false, error: "Conversa não encontrada." } as const;
         convo.mode = "ia";

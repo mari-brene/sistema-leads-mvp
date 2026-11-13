@@ -3,7 +3,7 @@ import type { FetchLike } from "@/lib/storage/supabase-store";
 type Row = Record<string, unknown>;
 
 /** Banco de mentira (PostgREST) com várias tabelas. Chave de cada tabela: "id", ou o que for informado em keys. */
-export function fakeTables(seed: Record<string, Row[]> = {}, keys: Record<string, string> = { campaign_settings: "client_id" }) {
+export function fakeTables(seed: Record<string, Row[]> = {}, keys: Record<string, string> = { campaign_settings: "client_id", inbox_settings: "client_id", conversations: "client_id,lead_id", ai_usage: "client_id,day" }) {
   const tables: Record<string, Row[]> = {};
   for (const [name, rows] of Object.entries(seed)) tables[name] = [...rows];
   const calls: { method: string; url: string; table: string }[] = [];
@@ -15,7 +15,8 @@ export function fakeTables(seed: Record<string, Row[]> = {}, keys: Record<string
     calls.push({ method: init.method, url, table });
     if (failWith) return { ok: false, status: failWith, json: async () => ({ secret: "dados-do-cliente" }) };
     const rows = (tables[table] ??= []);
-    const key = keys[table] ?? "id";
+    const keyCols = (keys[table] ?? "id").split(",");
+    const keyOf = (row: Row) => keyCols.map((c) => String(row[c])).join("|");
     const p = u.searchParams;
     const filters: ((row: Row) => boolean)[] = [];
     for (const [name, value] of p.entries()) {
@@ -32,13 +33,13 @@ export function fakeTables(seed: Record<string, Row[]> = {}, keys: Record<string
     if (init.method === "GET") {
       const limit = Number(p.get("limit") ?? 1000);
       const offset = Number(p.get("offset") ?? 0);
-      return ok(rows.filter(matches).sort((a, b) => String(a[key]).localeCompare(String(b[key]))).slice(offset, offset + limit));
+      return ok(rows.filter(matches).sort((a, b) => keyOf(a).localeCompare(keyOf(b))).slice(offset, offset + limit));
     }
     if (init.method === "POST") {
       const upsert = (init.headers?.Prefer ?? "").includes("merge-duplicates");
       const incoming = JSON.parse(init.body!);
       for (const row of (Array.isArray(incoming) ? incoming : [incoming]) as Row[]) {
-        const index = rows.findIndex((r) => r[key] === row[key]);
+        const index = rows.findIndex((r) => keyOf(r) === keyOf(row));
         if (index >= 0 && upsert) rows[index] = { ...rows[index], ...row };
         else if (index >= 0) return { ok: false, status: 409, json: async () => ({}) };
         else rows.push(row);
