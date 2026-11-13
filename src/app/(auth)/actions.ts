@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getAuthAdapter } from "@/lib/auth";
 import { endSession, startSession } from "@/lib/session";
+import { acceptPendingInvite } from "@/lib/tenancy/active-client";
 
 export type FormState = { error?: string; name?: string; email?: string } | undefined;
 
@@ -23,6 +24,7 @@ export async function signInAction(_prev: FormState, formData: FormData): Promis
   if (!result.ok) return { error: result.error, email };
 
   await startSession(result.user.id);
+  await acceptPendingInvite(result.user.id);
   redirect("/kanban");
 }
 
@@ -43,6 +45,7 @@ export async function signUpAction(_prev: FormState, formData: FormData): Promis
   if (!result.ok) return { error: result.error, name, email };
 
   await startSession(result.user.id);
+  await acceptPendingInvite(result.user.id);
   redirect("/kanban");
 }
 
