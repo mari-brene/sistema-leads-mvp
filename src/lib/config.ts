@@ -91,6 +91,11 @@ export const config = {
     return process.env.INBOX_STORE === "table" ? "table" : "collection";
   },
 
+  /** Onde ficam clientes e vínculos: "collection" (padrão) ou "table" (tabelas "clients" e "memberships"). */
+  get tenancyStore(): "collection" | "table" {
+    return process.env.TENANCY_STORE === "table" ? "table" : "collection";
+  },
+
   /** Endereço do projeto no Supabase (ex.: https://abcd.supabase.co). */
   get supabaseUrl(): string {
     return (process.env.SUPABASE_URL ?? "").trim().replace(/\/+$/, "");
