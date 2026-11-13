@@ -3,8 +3,9 @@ import { createAuditSink } from "@/lib/audit";
 import { config } from "@/lib/config";
 import { getInboxRepository } from "@/lib/inbox";
 import { getLeadsRepository } from "@/lib/leads";
-import { processInbound } from "@/lib/whatsapp/inbound";
-import { parseInbound, verifyChallenge, verifySignature } from "@/lib/whatsapp/webhook";
+import { getWhatsAppAccounts } from "@/lib/whatsapp";
+import { routeInbound } from "@/lib/whatsapp/route-inbound";
+import { parseInboundAll, verifyChallenge, verifySignature } from "@/lib/whatsapp/webhook";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -34,9 +35,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const summary = await processInbound(
-      { leads: getLeadsRepository(), inbox: getInboxRepository(), audit: createAuditSink(), ownerId: config.whatsappOwnerId },
-      parseInbound(payload, config.whatsappPhoneNumberId),
+    const accounts = getWhatsAppAccounts();
+    const summary = await routeInbound(
+      {
+        leads: getLeadsRepository(),
+        inbox: getInboxRepository(),
+        audit: createAuditSink(),
+        clientForNumber: async (numberId) => {
+          const own = await accounts.clientForPhoneNumberId(numberId);
+          if (own) return own;
+          return config.whatsappOwnerId && numberId === config.whatsappPhoneNumberId ? config.whatsappOwnerId : null;
+        },
+      },
+      parseInboundAll(payload),
     );
     return NextResponse.json({ ok: true, ...summary }, { headers: NO_STORE });
   } catch {

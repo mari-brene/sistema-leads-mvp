@@ -157,6 +157,10 @@ export const config = {
   get metaAppSecret(): string {
     return (process.env.META_APP_SECRET ?? "").trim();
   },
+  /** Chave que protege os tokens de WhatsApp de cada cliente no banco (64 caracteres de 0-9 e a-f). */
+  get credentialsEncryptionKey(): string {
+    return (process.env.CREDENTIALS_ENCRYPTION_KEY ?? "").trim();
+  },
   /** Quem recebe os contatos novos que escrevem primeiro (o "UID" do seu usuário no Supabase). */
   get whatsappOwnerId(): string {
     return (process.env.WHATSAPP_OWNER_ID ?? "").trim();

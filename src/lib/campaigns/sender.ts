@@ -15,6 +15,8 @@ export type SendRequest = {
   templateName: string;
   purpose: "marketing" | "service";
   template?: { name: string; params: string[] };
+  /** De qual cliente é a mensagem (escolhe o número de WhatsApp certo). */
+  clientId?: string;
 };
 
 export type SendResult = { ok: true; providerId: string } | { ok: false; error: string };
@@ -23,6 +25,8 @@ export interface WhatsAppSender {
   readonly id: "mock" | "cloud";
   readonly simulated: boolean;
   send(request: SendRequest): Promise<SendResult>;
+  /** Texto explicando por que este cliente não pode enviar agora (ou null se pode). Ausente = sempre pode. */
+  canSend?(clientId: string): Promise<string | null>;
 }
 
 let counter = 0;

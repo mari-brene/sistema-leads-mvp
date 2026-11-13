@@ -46,7 +46,17 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 /** Lê as mensagens do JSON da Meta. Ignora o que não for do nosso número ou estiver malformado. */
 export function parseInbound(payload: unknown, phoneNumberId: string): InboundMessage[] {
-  const result: InboundMessage[] = [];
+  if (!phoneNumberId) return [];
+  return parseInboundAll(payload)
+    .filter((message) => message.phoneNumberId === phoneNumberId)
+    .map(({ phoneNumberId: _ignored, ...message }) => message);
+}
+
+export type InboundForNumber = InboundMessage & { phoneNumberId: string };
+
+/** Lê as mensagens de TODOS os números (cada um de um cliente). Quem decide de quem é cada número é o webhook. */
+export function parseInboundAll(payload: unknown): InboundForNumber[] {
+  const result: InboundForNumber[] = [];
   if (!isObject(payload) || !Array.isArray(payload.entry)) return result;
   for (const entry of payload.entry) {
     if (!isObject(entry) || !Array.isArray(entry.changes)) continue;
@@ -54,7 +64,8 @@ export function parseInbound(payload: unknown, phoneNumberId: string): InboundMe
       if (!isObject(change) || change.field !== "messages" || !isObject(change.value)) continue;
       const value = change.value;
       const metadata = isObject(value.metadata) ? value.metadata : null;
-      if (!phoneNumberId || metadata?.phone_number_id !== phoneNumberId) continue;
+      const numberId = metadata?.phone_number_id;
+      if (typeof numberId !== "string" || !numberId) continue;
       if (!Array.isArray(value.messages)) continue;
       for (const message of value.messages) {
         if (!isObject(message)) continue;
@@ -62,7 +73,7 @@ export function parseInbound(payload: unknown, phoneNumberId: string): InboundMe
         if (typeof from !== "string" || !/^\d{8,15}$/.test(from) || typeof id !== "string" || !id) continue;
         const kind = typeof type === "string" ? type : "desconhecido";
         const body = kind === "text" && isObject(message.text) && typeof message.text.body === "string" ? message.text.body : null;
-        result.push({ from, id, type: kind, text: body && body.trim() ? body : null });
+        result.push({ phoneNumberId: numberId, from, id, type: kind, text: body && body.trim() ? body : null });
       }
     }
   }
