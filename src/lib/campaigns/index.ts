@@ -2,7 +2,8 @@ import { config } from "@/lib/config";
 import { currentLeadsRepository } from "@/lib/leads";
 import { createCampaignsRepository, type CampaignsRepository } from "./repository";
 import { createTableStore } from "./store";
-import { createCloudSender } from "@/lib/whatsapp/cloud-sender";
+import { getWhatsAppAccounts } from "@/lib/whatsapp";
+import { createRoutingSender } from "@/lib/whatsapp/router-sender";
 import { mockSender, type WhatsAppSender } from "./sender";
 
 export type { CampaignsRepository } from "./repository";
@@ -31,10 +32,12 @@ export function getSender(): WhatsAppSender {
   if (config.mockMode) {
     throw new Error("WHATSAPP_PROVIDER=cloud exige MOCK_MODE=false (senão o sistema mostraria 'simulação' enquanto envia de verdade).");
   }
-  return createCloudSender({
-    token: config.whatsappToken,
-    phoneNumberId: config.whatsappPhoneNumberId,
+  return createRoutingSender({
+    accounts: getWhatsAppAccounts(),
     apiVersion: config.whatsappApiVersion,
     templateLanguage: config.whatsappTemplateLanguage,
+    legacy: config.whatsappOwnerId
+      ? { clientId: config.whatsappOwnerId, token: config.whatsappToken, phoneNumberId: config.whatsappPhoneNumberId }
+      : null,
   });
 }

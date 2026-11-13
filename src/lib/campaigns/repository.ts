@@ -147,6 +147,8 @@ export function createCampaignsRepository({ leads, store = createCollectionStore
 
         const firstPlan = logic.planBatch(loadedFresh, allLeads, current);
         if (!firstPlan.ok) return firstPlan;
+        const blocked = sender.canSend ? await sender.canSend(userId) : null;
+        if (blocked) return { ok: false, error: blocked };
 
         const wanted = [...firstPlan.sends.map((item) => item.messageId), ...firstPlan.skips.map((item) => item.messageId)];
         const claimed = new Set(wanted.length > 0 ? await store.claimMessages(userId, wanted, current.toISOString()) : []);
@@ -167,6 +169,7 @@ export function createCampaignsRepository({ leads, store = createCollectionStore
                 text: item.text,
                 templateName: item.templateName,
                 purpose: "marketing",
+                clientId: userId,
                 ...(item.template ? { template: item.template } : {}),
               }),
             );

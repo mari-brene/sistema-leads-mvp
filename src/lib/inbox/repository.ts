@@ -262,7 +262,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       if (plan.decision.kind === "optout") {
         await deps.leads.registerOptOut(userId, leadId);
         const confirmation = "Tudo certo! Você não receberá mais mensagens de marketing nossas. Obrigado e até mais.";
-        const sent = await deps.sender().send({ to: lead.phone, text: confirmation, templateName: "confirmacao-saida", purpose: "service" });
+        const sent = await deps.sender().send({ to: lead.phone, text: confirmation, templateName: "confirmacao-saida", purpose: "service", clientId: userId });
         await edit(userId, (data) => {
           const convo = findConversation(data, userId, leadId);
           if (!convo) return;
@@ -305,7 +305,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       ]);
       if (!freshLead || freshLead.optOut || !freshLead.phone || !stillAi) return { ok: true, outcome: "para_voce" };
 
-      const sent = await deps.sender().send({ to: freshLead.phone, text: result.text, templateName: "resposta-ia", purpose: "service" });
+      const sent = await deps.sender().send({ to: freshLead.phone, text: result.text, templateName: "resposta-ia", purpose: "service", clientId: userId });
       await edit(userId, (data) => {
         const convo = findConversation(data, userId, leadId);
         if (!convo) return;
@@ -343,7 +343,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
         };
       }
 
-      const sent = await deps.sender().send({ to: lead.phone, text: checked.text, templateName: "resposta-manual", purpose: "service" });
+      const sent = await deps.sender().send({ to: lead.phone, text: checked.text, templateName: "resposta-manual", purpose: "service", clientId: userId });
       return edit(userId, (fresh) => {
         const current = findConversation(fresh, userId, leadId);
         if (!current) return { ok: false, error: "Conversa não encontrada." } as const;
