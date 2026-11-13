@@ -40,7 +40,7 @@ export function WhatsAppAccountForm({ status, encryptionReady }: { status: Accou
 
       {status.connected ? (
         <form action={removeAction}>
-          <Button type="submit" variant="secondary" disabled={removing}>
+          <Button type="submit" variant="outline" disabled={removing}>
             {removing ? "Desconectando..." : "Desconectar este número"}
           </Button>
           {removal?.removed ? <p className="mt-2 text-sm text-slate-600">Número desconectado.</p> : null}
