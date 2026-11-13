@@ -32,7 +32,7 @@ export function createCollectionStore(): AuditStore {
       withLock(async () => {
         const stamp = at.toISOString();
         const data = addEntries(await loadAll(), entries, stamp, () => randomUUID());
-        await writeJson("audit", { ...data, lastCron: { at: stamp, text: lastCronText.slice(0, 300) } });
+        await writeJson("audit", { ...data, lastCron: lastCronText ? { at: stamp, text: lastCronText.slice(0, 300) } : data.lastCron });
       }),
 
     async read(clientId) {
@@ -73,9 +73,11 @@ export function createTableStore(options: RestOptions, newId: () => string = () 
         if (!response.ok) rest.fail(response.status, "gravar", "audit_log");
       }
 
-      const state: StateRow = { id: STATE_ID, at: at.toISOString(), text: lastCronText.slice(0, 300) };
-      const saved = await rest.call("audit_state", "POST", "?on_conflict=id", state, "resolution=merge-duplicates,return=minimal");
-      if (!saved.ok) rest.fail(saved.status, "gravar", "audit_state");
+      if (lastCronText) {
+        const state: StateRow = { id: STATE_ID, at: at.toISOString(), text: lastCronText.slice(0, 300) };
+        const saved = await rest.call("audit_state", "POST", "?on_conflict=id", state, "resolution=merge-duplicates,return=minimal");
+        if (!saved.ok) rest.fail(saved.status, "gravar", "audit_state");
+      }
 
       const cutoff = new Date(base - RETENTION_DAYS * 86_400_000).toISOString();
       const purged = await rest.call("audit_log", "DELETE", `?at=lt.${encodeURIComponent(cutoff)}`, undefined, "return=minimal");

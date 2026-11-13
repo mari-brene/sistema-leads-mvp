@@ -101,3 +101,19 @@ describe("auditoria na coleção (como sempre foi)", () => {
     expect(result.lastCron?.text).toBe("ok");
   });
 });
+
+describe("a última chamada do agendador não é apagada por outros registros", () => {
+  it("registro sem texto de agendador (ex.: exportação) mantém a última chamada", async () => {
+    const { store } = table();
+    const sink = createAuditSink(() => new Date("2026-11-13T12:00:00.000Z"), store);
+    await sink.log([], "rodou o agendador");
+    await sink.log([{ userId: "c1", kind: "exportacao", text: "Exportação" }], "");
+    expect((await readAudit("c1", store)).lastCron?.text).toBe("rodou o agendador");
+
+    const collection = createCollectionStore();
+    const sink2 = createAuditSink(() => new Date("2026-11-13T12:00:00.000Z"), collection);
+    await sink2.log([], "rodou o agendador");
+    await sink2.log([{ userId: "c1", kind: "exportacao", text: "Exportação" }], "");
+    expect((await readAudit("c1", collection)).lastCron?.text).toBe("rodou o agendador");
+  });
+});

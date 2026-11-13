@@ -4,6 +4,8 @@ import { readAudit } from "@/lib/audit";
 import { formatDateTime } from "@/lib/format";
 import { requirePermission } from "@/lib/require-user";
 
+const KIND_LABEL = { erro: "Erro", whatsapp: "WhatsApp", agendador: "Agendador", exportacao: "Exportação" } as const;
+
 export const metadata: Metadata = { title: "Auditoria" };
 
 export default async function AuditPage() {
@@ -42,7 +44,7 @@ export default async function AuditPage() {
                   <p className="text-sm text-slate-800">{entry.text}</p>
                   <p className="text-xs text-slate-400">{formatDateTime(entry.at)}</p>
                 </div>
-                <Badge tone={entry.kind === "erro" ? "red" : "sky"}>{entry.kind === "erro" ? "Erro" : entry.kind === "whatsapp" ? "WhatsApp" : "Agendador"}</Badge>
+                <Badge tone={entry.kind === "erro" ? "red" : "sky"}>{KIND_LABEL[entry.kind]}</Badge>
               </li>
             ))}
           </ul>
