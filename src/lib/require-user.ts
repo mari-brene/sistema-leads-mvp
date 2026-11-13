@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { AuthUser } from "@/lib/auth";
 import { getSession } from "@/lib/session";
+import { readActiveClient } from "@/lib/tenancy/active-client";
 import { resolveScope, type Role } from "@/lib/tenancy";
 import { can, type Permission } from "@/lib/tenancy/permissions";
 
@@ -14,7 +15,7 @@ export type ScopedUser = AuthUser & { clientId: string; role: Role };
 export async function requireUser(): Promise<ScopedUser> {
   const user = await getSession();
   if (!user) redirect("/login");
-  const scope = await resolveScope(user.id);
+  const scope = await resolveScope(user.id, await readActiveClient());
   return { ...user, clientId: scope.clientId, role: scope.role };
 }
 

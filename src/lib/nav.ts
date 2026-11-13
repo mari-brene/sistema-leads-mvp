@@ -85,6 +85,14 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Limite diário, horários, mensagens de saída e base de conhecimento.",
   },
   {
+    slug: "equipe",
+    href: "/equipe",
+    label: "Equipe",
+    icon: "users",
+    phase: 11,
+    description: "Convide pessoas por link e defina o papel de cada uma neste cliente.",
+  },
+  {
     slug: "auditoria",
     href: "/auditoria",
     label: "Auditoria",
