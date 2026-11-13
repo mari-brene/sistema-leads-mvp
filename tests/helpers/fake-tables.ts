@@ -21,7 +21,9 @@ export function fakeTables(seed: Record<string, Row[]> = {}, keys: Record<string
     const filters: ((row: Row) => boolean)[] = [];
     for (const [name, value] of p.entries()) {
       if (["select", "order", "limit", "offset", "on_conflict"].includes(name)) continue;
-      if (value.startsWith("eq.")) filters.push((row) => String(row[name] ?? "") === value.slice(3));
+      if (value === "is.null") filters.push((row) => row[name] === null || row[name] === undefined);
+      else if (value.startsWith("gt.")) filters.push((row) => row[name] != null && String(row[name]) > value.slice(3));
+      else if (value.startsWith("eq.")) filters.push((row) => String(row[name] ?? "") === value.slice(3));
       else if (value.startsWith("in.(")) {
         const list = value.slice(4, -1).split(",").map((s) => s.replace(/^"|"$/g, ""));
         filters.push((row) => list.includes(String(row[name] ?? "")));
@@ -51,8 +53,9 @@ export function fakeTables(seed: Record<string, Row[]> = {}, keys: Record<string
     }
     if (init.method === "PATCH") {
       const patch = JSON.parse(init.body!) as Row;
-      rows.filter(matches).forEach((row) => Object.assign(row, patch));
-      return ok();
+      const hit = rows.filter(matches);
+      hit.forEach((row) => Object.assign(row, patch));
+      return ok((init.headers?.Prefer ?? "").includes("return=representation") ? hit : []);
     }
     if (init.method === "DELETE") {
       for (let i = rows.length - 1; i >= 0; i--) if (matches(rows[i])) rows.splice(i, 1);
