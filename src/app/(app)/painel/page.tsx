@@ -42,12 +42,14 @@ export default async function DashboardPage() {
           <p className="mt-1 text-slate-600">Números de {user.clientName || "este cliente"}. Outros clientes não aparecem aqui.</p>
         </div>
         {can(user.role, "export") ? (
-          <a
-            href="/painel/exportar"
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-soft hover:bg-slate-50"
-          >
-            Baixar leads em CSV
-          </a>
+          <form action="/painel/exportar" method="get">
+            <button
+              type="submit"
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-soft hover:bg-slate-50"
+            >
+              Baixar leads em CSV
+            </button>
+          </form>
         ) : null}
       </div>
 
