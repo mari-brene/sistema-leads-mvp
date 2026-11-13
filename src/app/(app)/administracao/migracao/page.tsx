@@ -3,14 +3,15 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { config } from "@/lib/config";
 import { getCampaignsMigration, type CampaignsReport } from "@/lib/migration/campaigns-run";
+import { getInboxMigration, type InboxReport } from "@/lib/migration/inbox-run";
 import { getMigration, type MigrationReport } from "@/lib/migration/run";
 import { requireUser } from "@/lib/require-user";
-import { runCampaignsMigrationAction, runMigrationAction } from "./actions";
+import { runCampaignsMigrationAction, runInboxMigrationAction, runMigrationAction } from "./actions";
 
 export const metadata: Metadata = { title: "Migração dos leads" };
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ leads?: string; faltando?: string; camp?: string; campfalta?: string; erro?: string }> };
+type Props = { searchParams: Promise<{ leads?: string; faltando?: string; camp?: string; campfalta?: string; caixa?: string; caixafalta?: string; erro?: string }> };
 
 export default async function MigrationPage({ searchParams }: Props) {
   const user = await requireUser();
@@ -36,6 +37,21 @@ export default async function MigrationPage({ searchParams }: Props) {
       campaignsError = e instanceof Error ? e.message : "Erro desconhecido.";
     }
   }
+  let inbox: InboxReport | null = null;
+  let inboxError = "";
+  if (config.dataBackend === "supabase" && !error) {
+    try {
+      inbox = await getInboxMigration().preview();
+    } catch (e) {
+      inboxError = e instanceof Error ? e.message : "Erro desconhecido.";
+    }
+  }
+  const inboxRows: [string, "settings" | "conversations" | "messages" | "usage"][] = [
+    ["Configurações da IA", "settings"],
+    ["Conversas", "conversations"],
+    ["Mensagens", "messages"],
+    ["Uso diário da IA", "usage"],
+  ];
   const rows: [string, "settings" | "templates" | "campaigns" | "messages"][] = [
     ["Limites e horários", "settings"],
     ["Modelos de mensagem", "templates"],
@@ -139,6 +155,58 @@ export default async function MigrationPage({ searchParams }: Props) {
           <form action={runCampaignsMigrationAction} className="mt-5">
             <Button type="submit" disabled={rows.every(([, key]) => campaigns.plan.counts[key].toCopy === 0)}>
               Copiar campanhas agora
+            </Button>
+          </form>
+        </section>
+      )}
+
+      <h2 className="mt-10 text-xl font-semibold text-slate-900">Migração da caixa de entrada</h2>
+      <p className="mt-1 text-slate-600">
+        Copia conversas, mensagens e configurações da IA do lugar antigo para as tabelas novas. Copie os leads primeiro. Nada é apagado nem alterado no lugar antigo.
+      </p>
+
+      {params.caixa !== undefined && !error && (
+        <p className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          Cópia feita: {params.caixa} item(ns) copiados. Conferência: {params.caixafalta === "0" ? "tudo o que foi copiado está nas tabelas novas." : `${params.caixafalta} item(ns) não foram encontrados nas tabelas novas.`}
+        </p>
+      )}
+      {inboxError && <p className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{inboxError}</p>}
+
+      {inbox && (
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+          <h3 className="text-sm font-semibold text-slate-800">Situação agora</h3>
+          <table className="mt-3 w-full text-sm text-slate-700">
+            <thead>
+              <tr className="text-left text-xs text-slate-500">
+                <th className="font-medium">O quê</th>
+                <th className="font-medium">No lugar antigo</th>
+                <th className="font-medium">Já copiados</th>
+                <th className="font-medium">Faltam</th>
+                <th className="font-medium">Bloqueados</th>
+                <th className="font-medium">Inválidos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {inboxRows.map(([label, key]) => {
+                const c = inbox.plan.counts[key];
+                return (
+                  <tr key={key} className="border-t border-slate-100">
+                    <td className="py-1.5">{label}</td>
+                    <td>{c.source}</td>
+                    <td>{c.alreadyCopied}</td>
+                    <td className="font-semibold">{c.toCopy}</td>
+                    <td>{c.blocked}</td>
+                    <td>{c.invalid}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-slate-500">Bloqueado = o cliente dono ainda não está na tabela de clientes.</p>
+
+          <form action={runInboxMigrationAction} className="mt-5">
+            <Button type="submit" disabled={inboxRows.every(([, key]) => inbox.plan.counts[key].toCopy === 0)}>
+              Copiar caixa de entrada agora
             </Button>
           </form>
         </section>
