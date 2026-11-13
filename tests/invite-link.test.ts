@@ -31,4 +31,10 @@ describe("menu Equipe", () => {
     expect(navForRole(NAV_ITEMS, "client_manager").map((i) => i.slug)).toContain("equipe");
     expect(navForRole(NAV_ITEMS, "agent").map((i) => i.slug)).not.toContain("equipe");
   });
+
+  it("Clientes aparece só para o administrador da agência", () => {
+    expect(navForRole(NAV_ITEMS, "agency_admin").map((i) => i.slug)).toContain("clientes");
+    expect(navForRole(NAV_ITEMS, "client_manager").map((i) => i.slug)).not.toContain("clientes");
+    expect(navForRole(NAV_ITEMS, "agent").map((i) => i.slug)).not.toContain("clientes");
+  });
 });

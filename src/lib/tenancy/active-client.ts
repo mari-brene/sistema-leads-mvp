@@ -19,6 +19,17 @@ export async function setPendingInvite(token: string): Promise<void> {
   (await cookies()).set(INVITE_COOKIE, token, { ...base, maxAge: 60 * 60 });
 }
 
+export async function hasPendingInvite(): Promise<boolean> {
+  return Boolean((await cookies()).get(INVITE_COOKIE)?.value);
+}
+
+/** Ao sair, esquece o cliente escolhido e qualquer convite guardado. */
+export async function clearClientPreference(): Promise<void> {
+  const store = await cookies();
+  store.delete(CLIENT_COOKIE);
+  store.delete(INVITE_COOKIE);
+}
+
 /** Usa o convite guardado (se houver). Nunca atrapalha o login: devolve null se não havia convite. */
 export async function acceptPendingInvite(userId: string): Promise<{ ok: true } | { ok: false; reason: InviteFailure } | null> {
   const store = await cookies();

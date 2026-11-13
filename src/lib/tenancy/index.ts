@@ -1,7 +1,9 @@
 import { config } from "@/lib/config";
-import { ensureDefaultClient, pickScope } from "./logic";
+import { ensureDefaultClient, pickAccess, type Access } from "./logic";
 import { createCollectionStore, createTableStore, type TenancyStore } from "./store";
 import type { Scope } from "./types";
+
+export type { Access } from "./logic";
 
 export * from "./types";
 export { canConfigure } from "./logic";
@@ -18,17 +20,25 @@ export function getTenancyStore(): TenancyStore {
 }
 
 /**
- * Descobre (e cria, se for a primeira vez) o cliente e o papel da pessoa.
+ * Descobre (e cria, se for a primeira vez) o cliente ativo e o papel da pessoa, e a lista de clientes que ela pode acessar.
  * Se não for possível ler os vínculos, dá erro: nunca se assume que a pessoa é a primeira do sistema.
  */
-export async function resolveScope(userId: string, preferredClientId?: string, store: TenancyStore = getTenancyStore()): Promise<Scope> {
+export async function resolveAccess(
+  userId: string,
+  preferredClientId?: string,
+  store: TenancyStore = getTenancyStore(),
+): Promise<{ scope: Scope; accessible: Access[] }> {
   let data = await store.load();
   const ensured = ensureDefaultClient(data, userId, new Date());
   if (ensured.changed) {
     await store.save(data, ensured.data);
     data = ensured.data;
   }
-  const scope = pickScope(userId, data.memberships, preferredClientId);
-  if (!scope) throw new Error("Não foi possível determinar o cliente desta conta.");
-  return scope;
+  const access = pickAccess(data, userId, preferredClientId);
+  if (!access) throw new Error("Não foi possível determinar o cliente desta conta.");
+  return access;
+}
+
+export async function resolveScope(userId: string, preferredClientId?: string, store?: TenancyStore): Promise<Scope> {
+  return (await resolveAccess(userId, preferredClientId, store)).scope;
 }
