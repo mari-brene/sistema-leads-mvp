@@ -86,6 +86,11 @@ export const config = {
     return process.env.CAMPAIGNS_STORE === "table" ? "table" : "collection";
   },
 
+  /** Cadastro aberto ao público. Com ALLOW_OPEN_SIGNUP=false, só entra quem chega por um link de convite. */
+  get allowOpenSignup(): boolean {
+    return process.env.ALLOW_OPEN_SIGNUP !== "false";
+  },
+
   /** Onde fica a caixa de entrada: "collection" (padrão) ou "table" (tabelas próprias do Supabase). */
   get inboxStore(): "collection" | "table" {
     return process.env.INBOX_STORE === "table" ? "table" : "collection";

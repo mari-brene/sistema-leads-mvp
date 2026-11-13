@@ -31,7 +31,7 @@ describe("permissões por papel", () => {
   it("menu do gestor e do administrador mostra tudo", () => {
     const all = NAV_ITEMS.map((i) => i.slug);
     for (const role of ["agency_admin", "client_manager"] as Role[]) {
-      expect(navForRole(NAV_ITEMS, role).map((i) => i.slug)).toEqual(all);
+      expect(navForRole(NAV_ITEMS, role).map((i) => i.slug)).toEqual(role === "agency_admin" ? all : all.filter((s) => s !== "clientes"));
     }
   });
 });

@@ -93,6 +93,14 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Convide pessoas por link e defina o papel de cada uma neste cliente.",
   },
   {
+    slug: "clientes",
+    href: "/administracao/clientes",
+    label: "Clientes",
+    icon: "users",
+    phase: 11,
+    description: "Crie e renomeie os clientes da agência.",
+  },
+  {
     slug: "auditoria",
     href: "/auditoria",
     label: "Auditoria",

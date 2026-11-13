@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { Icon } from "@/components/icons";
+import { ClientSwitcher } from "@/components/client-switcher";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { config } from "@/lib/config";
@@ -20,7 +21,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur md:px-6">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <ClientSwitcher clients={user.clients} activeId={user.clientId} activeName={user.clientName} />
             {config.simulatedWhatsApp && (
               <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
                 Modo simulação

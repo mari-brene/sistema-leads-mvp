@@ -2,11 +2,17 @@ import { redirect } from "next/navigation";
 import type { AuthUser } from "@/lib/auth";
 import { getSession } from "@/lib/session";
 import { readActiveClient } from "@/lib/tenancy/active-client";
-import { resolveScope, type Role } from "@/lib/tenancy";
+import { resolveAccess, type Role } from "@/lib/tenancy";
 import { can, type Permission } from "@/lib/tenancy/permissions";
 
 /** Quem está logado, mais o cliente em que está trabalhando e o papel nele. */
-export type ScopedUser = AuthUser & { clientId: string; role: Role };
+export type ScopedUser = AuthUser & {
+  clientId: string;
+  clientName: string;
+  role: Role;
+  /** Clientes em que a pessoa pode trabalhar (mais de um = ela pode trocar de cliente). */
+  clients: { id: string; name: string }[];
+};
 
 /**
  * Devolve quem está logado; se ninguém estiver, manda para a tela de login.
@@ -15,8 +21,9 @@ export type ScopedUser = AuthUser & { clientId: string; role: Role };
 export async function requireUser(): Promise<ScopedUser> {
   const user = await getSession();
   if (!user) redirect("/login");
-  const scope = await resolveScope(user.id, await readActiveClient());
-  return { ...user, clientId: scope.clientId, role: scope.role };
+  const { scope, accessible } = await resolveAccess(user.id, await readActiveClient());
+  const clients = accessible.map((a) => ({ id: a.client.id, name: a.client.name }));
+  return { ...user, clientId: scope.clientId, clientName: clients.find((c) => c.id === scope.clientId)?.name ?? "", role: scope.role, clients };
 }
 
 /**

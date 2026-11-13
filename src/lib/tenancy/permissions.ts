@@ -27,6 +27,7 @@ const NAV_PERMISSION: Record<string, Permission> = {
   campanhas: "campaigns",
   configuracoes: "settings",
   equipe: "team",
+  clientes: "admin",
   auditoria: "audit",
 };
 

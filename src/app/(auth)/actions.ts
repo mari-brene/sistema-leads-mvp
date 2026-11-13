@@ -3,7 +3,9 @@
 import { redirect } from "next/navigation";
 import { getAuthAdapter } from "@/lib/auth";
 import { endSession, startSession } from "@/lib/session";
-import { acceptPendingInvite } from "@/lib/tenancy/active-client";
+import { config } from "@/lib/config";
+import { acceptPendingInvite, clearClientPreference, hasPendingInvite } from "@/lib/tenancy/active-client";
+import { signupAllowed } from "@/lib/tenancy/clients";
 
 export type FormState = { error?: string; name?: string; email?: string } | undefined;
 
@@ -34,6 +36,9 @@ export async function signUpAction(_prev: FormState, formData: FormData): Promis
   const password = field(formData, "password");
   const confirm = field(formData, "confirm");
 
+  if (!signupAllowed(config.allowOpenSignup, await hasPendingInvite())) {
+    return { error: "O cadastro é só por convite. Peça um link a quem administra o sistema.", name, email };
+  }
   if (!email.trim() || !password) {
     return { error: "Preencha e-mail e senha.", name, email };
   }
@@ -51,5 +56,6 @@ export async function signUpAction(_prev: FormState, formData: FormData): Promis
 
 export async function signOutAction(): Promise<void> {
   await endSession();
+  await clearClientPreference();
   redirect("/login");
 }
