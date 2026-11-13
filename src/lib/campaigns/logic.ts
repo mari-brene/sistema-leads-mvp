@@ -246,7 +246,7 @@ export function countMessages(messages: CampaignMessage[]): MessageCounts {
   const counts: MessageCounts = { total: 0, naFila: 0, enviadas: 0, falhas: 0, puladas: 0 };
   for (const message of messages) {
     counts.total += 1;
-    if (message.status === "na_fila") counts.naFila += 1;
+    if (message.status === "na_fila" || message.status === "enviando") counts.naFila += 1;
     else if (message.status === "enviada") counts.enviadas += 1;
     else if (message.status === "falhou") counts.falhas += 1;
     else counts.puladas += 1;
@@ -258,7 +258,7 @@ export function countMessages(messages: CampaignMessage[]): MessageCounts {
 export function sentToday(messages: CampaignMessage[], now: Date): number {
   const today = localTime(now).day;
   return messages.filter(
-    (message) => message.status === "enviada" && message.sentAt && localTime(new Date(message.sentAt)).day === today,
+    (message) => (message.status === "enviada" || message.status === "enviando") && message.sentAt && localTime(new Date(message.sentAt)).day === today,
   ).length;
 }
 
@@ -352,19 +352,43 @@ export function applyBatch(slice: Slice, plan: Extract<BatchPlan, { ok: true }>,
 
   const messages = slice.messages.map((message): CampaignMessage => {
     const skip = skipReason.get(message.id);
-    if (skip) return { ...message, status: "pulada", reason: skip };
+    if (skip) return { ...message, status: "pulada", reason: skip, sentAt: null };
 
     const outcome = outcomes.get(message.id);
     if (!outcome) return message;
     if (outcome.ok) return { ...message, status: "enviada", reason: "", providerId: outcome.providerId, sentAt: ctx.now };
-    return { ...message, status: "falhou", reason: outcome.error };
+    return { ...message, status: "falhou", reason: outcome.error, sentAt: null };
   });
 
   const campaigns = slice.campaigns.map((campaign) => {
     if (campaign.status !== "em_andamento") return campaign;
-    const stillQueued = messages.some((message) => message.campaignId === campaign.id && message.status === "na_fila");
+    const stillQueued = messages.some((message) => message.campaignId === campaign.id && (message.status === "na_fila" || message.status === "enviando"));
     return stillQueued ? campaign : { ...campaign, status: "concluida" as const, finishedAt: ctx.now };
   });
 
   return { ...slice, messages, campaigns };
+}
+
+/** Quanto tempo uma mensagem pode ficar "Enviando" antes de ser considerada interrompida. */
+export const STUCK_MINUTES = 15;
+
+export const STUCK_REASON = "Envio interrompido: confira no WhatsApp antes de tentar de novo.";
+
+/** Mensagens que ficaram "Enviando" por muito tempo (o servidor parou no meio) viram "Falhou", sem reenvio automático. */
+export function expireStuck(slice: Slice, now: Date): Slice {
+  const limit = now.getTime() - STUCK_MINUTES * 60_000;
+  let changed = false;
+  const messages = slice.messages.map((message): CampaignMessage => {
+    if (message.status !== "enviando") return message;
+    const since = message.sentAt ? new Date(message.sentAt).getTime() : 0;
+    if (since > limit) return message;
+    changed = true;
+    return { ...message, status: "falhou", reason: STUCK_REASON, sentAt: null };
+  });
+  return changed ? { ...slice, messages } : slice;
+}
+
+/** Marca como "Enviando" as mensagens reservadas por esta rodada. */
+export function markClaimed(slice: Slice, ids: Set<string>, at: string): Slice {
+  return { ...slice, messages: slice.messages.map((message) => (ids.has(message.id) ? { ...message, status: "enviando" as const, sentAt: at } : message)) };
 }

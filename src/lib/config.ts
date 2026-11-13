@@ -85,6 +85,10 @@ export const config = {
   get campaignsStore(): "collection" | "table" {
     return process.env.CAMPAIGNS_STORE === "table" ? "table" : "collection";
   },
+  /** Onde fica a auditoria: "collection" (padrão) ou "table" (tabela própria do Supabase, com limpeza de registros antigos). */
+  get auditStore(): "collection" | "table" {
+    return process.env.AUDIT_STORE === "table" ? "table" : "collection";
+  },
 
   /** Cadastro aberto ao público. Com ALLOW_OPEN_SIGNUP=false, só entra quem chega por um link de convite. */
   get allowOpenSignup(): boolean {

@@ -139,12 +139,22 @@ export function createCampaignsRepository({ leads, store = createCollectionStore
 
     runBatch(userId, sender) {
       return withLock(async (): Promise<BatchResult> => {
-        const slice = await store.load(userId);
-        const allLeads = await leads.list(userId);
         const current = now();
+        const loaded = await store.load(userId);
+        const loadedFresh = logic.expireStuck(loaded, current);
+        if (loadedFresh !== loaded) await store.save(userId, loaded, loadedFresh);
+        const allLeads = await leads.list(userId);
 
-        const plan = logic.planBatch(slice, allLeads, current);
-        if (!plan.ok) return plan;
+        const firstPlan = logic.planBatch(loadedFresh, allLeads, current);
+        if (!firstPlan.ok) return firstPlan;
+
+        const wanted = [...firstPlan.sends.map((item) => item.messageId), ...firstPlan.skips.map((item) => item.messageId)];
+        const claimed = new Set(wanted.length > 0 ? await store.claimMessages(userId, wanted, current.toISOString()) : []);
+        if (wanted.length > 0 && claimed.size === 0) {
+          return { ok: false, error: "Outro envio já está em andamento. Tente de novo em alguns minutos." };
+        }
+        const plan = { ...firstPlan, sends: firstPlan.sends.filter((item) => claimed.has(item.messageId)), skips: firstPlan.skips.filter((item) => claimed.has(item.messageId)) };
+        const slice = logic.markClaimed(loadedFresh, claimed, current.toISOString());
 
         // Envia um por vez (simples e fácil de acompanhar). Um erro em um contato não para os outros.
         const outcomes = new Map<string, logic.SendOutcome>();
