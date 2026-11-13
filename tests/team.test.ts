@@ -165,4 +165,35 @@ describe("mesmas regras no arquivo/coleção (modo local)", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("confere se o link ainda vale sem usar o convite (para liberar o cadastro)", async () => {
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const dir = await mkdtemp(path.join(os.tmpdir(), "team-peek-"));
+    const previous = process.env.DATA_DIR;
+    process.env.DATA_DIR = dir;
+    let now = new Date("2026-11-13T12:00:00.000Z");
+    try {
+      const tenancy = createCollectionStore();
+      await tenancy.save({ clients: [], memberships: [] }, { clients: [{ id: "c1", name: "C1", createdAt: "2026-11-01T00:00:00.000Z" }], memberships: [{ userId: "m1", clientId: "c1", role: "client_manager" }] });
+      let n = 0;
+      const service = createTeamService({ tenancy, invites: createCollectionInvitationsStore(), lookupUser: async () => null, now: () => now, newToken: () => "tok-" + ++n + "-abcdefghijklmnopqrstuvwxyz" });
+      const r = await service.createInvite("m1", "c1", "agent");
+      if (!r.ok) throw new Error(r.error);
+      expect(await service.inviteIsUsable(r.token)).toBe(true);
+      expect(await service.inviteIsUsable(r.token)).toBe(true);
+      expect(await service.inviteIsUsable("token-que-nao-existe-123456")).toBe(false);
+      expect((await service.acceptInvite("novo", r.token)).ok).toBe(true);
+      expect(await service.inviteIsUsable(r.token)).toBe(false);
+      const other = await service.createInvite("m1", "c1", "agent");
+      if (!other.ok) throw new Error(other.error);
+      now = new Date("2026-11-30T12:00:00.000Z");
+      expect(await service.inviteIsUsable(other.token)).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env.DATA_DIR;
+      else process.env.DATA_DIR = previous;
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

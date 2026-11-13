@@ -19,8 +19,15 @@ export async function setPendingInvite(token: string): Promise<void> {
   (await cookies()).set(INVITE_COOKIE, token, { ...base, maxAge: 60 * 60 });
 }
 
+/** O cookie sozinho não prova nada (qualquer pessoa pode criar um). Aqui o convite é conferido no servidor. */
 export async function hasPendingInvite(): Promise<boolean> {
-  return Boolean((await cookies()).get(INVITE_COOKIE)?.value);
+  const token = (await cookies()).get(INVITE_COOKIE)?.value;
+  if (!isTokenShape(token)) return false;
+  try {
+    return await getTeamService().inviteIsUsable(token);
+  } catch {
+    return false;
+  }
 }
 
 /** Ao sair, esquece o cliente escolhido e qualquer convite guardado. */
