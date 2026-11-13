@@ -49,7 +49,7 @@ export function parseInbound(payload: unknown, phoneNumberId: string): InboundMe
   if (!phoneNumberId) return [];
   return parseInboundAll(payload)
     .filter((message) => message.phoneNumberId === phoneNumberId)
-    .map(({ phoneNumberId: _ignored, ...message }) => message);
+    .map((message) => ({ from: message.from, id: message.id, type: message.type, text: message.text }));
 }
 
 export type InboundForNumber = InboundMessage & { phoneNumberId: string };
