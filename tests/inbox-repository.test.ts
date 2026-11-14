@@ -139,6 +139,19 @@ describe("caixa de entrada de ponta a ponta (arquivos locais, envio e IA simulad
     expect((await repo.getThread("u1", l.id))?.conversation?.handoffReason).toContain("429");
   });
 
+  it("IA que dá erro inesperado vira transferência com motivo (a conversa não fica parada)", async () => {
+    await setup();
+    aiImpl = async () => {
+      throw new Error("rede caiu");
+    };
+    const l = await lead();
+    expect(await repo.receive("u1", l.id, "qual o horário?")).toEqual({ ok: true, outcome: "para_voce" });
+    expect(sentLog).toHaveLength(0);
+    const convo = (await repo.getThread("u1", l.id))?.conversation;
+    expect(convo?.mode).toBe("humano");
+    expect(convo?.handoffReason).toContain("inesperado");
+  });
+
   it("IA desligada ou base vazia: só você responde", async () => {
     await setup(KNOW, false);
     const l = await lead();

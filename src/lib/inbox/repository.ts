@@ -279,12 +279,17 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       if (plan.decision.kind === "human") return { ok: true, outcome: "para_voce" };
 
       // Resposta da IA.
-      const result = await deps.ai().reply({
-        businessName: settings.businessName,
-        knowledge: settings.knowledge,
-        history: plan.history,
-        message: text,
-      });
+      let result: Awaited<ReturnType<ReturnType<typeof deps.ai>["reply"]>>;
+      try {
+        result = await deps.ai().reply({
+          businessName: settings.businessName,
+          knowledge: settings.knowledge,
+          history: plan.history,
+          message: text,
+        });
+      } catch {
+        result = { ok: false, error: "erro inesperado ao chamar a IA" };
+      }
 
       if (!result.ok) {
         await handoff(userId, leadId, `A IA falhou (${result.error}). Responda você.`);
@@ -305,7 +310,10 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       ]);
       if (!freshLead || freshLead.optOut || !freshLead.phone || !stillAi) return { ok: true, outcome: "para_voce" };
 
-      const sent = await deps.sender().send({ to: freshLead.phone, text: result.text, templateName: "resposta-ia", purpose: "service", clientId: userId });
+      const sent = await deps
+        .sender()
+        .send({ to: freshLead.phone, text: result.text, templateName: "resposta-ia", purpose: "service", clientId: userId })
+        .catch(() => ({ ok: false as const, error: "erro inesperado no envio" }));
       await edit(userId, (data) => {
         const convo = findConversation(data, userId, leadId);
         if (!convo) return;
