@@ -32,7 +32,8 @@ export type Thread = {
 
 export type ReceiveResult =
   | { ok: false; error: string }
-  | { ok: true; outcome: "ia_respondeu" | "para_voce" | "saiu" | "duplicada" };
+  | { ok: true; outcome: "ia_respondeu" | "saiu" | "duplicada" }
+  | { ok: true; outcome: "para_voce"; reason: string };
 
 export type ReceiveOptions = {
   /** Identificador da mensagem na Meta: se já foi processada, é ignorada. */
@@ -276,7 +277,7 @@ export function createInboxRepository(deps: Deps): InboxRepository {
         return { ok: true, outcome: "saiu" };
       }
 
-      if (plan.decision.kind === "human") return { ok: true, outcome: "para_voce" };
+      if (plan.decision.kind === "human") return { ok: true, outcome: "para_voce", reason: plan.decision.reason };
 
       // Resposta da IA.
       let result: Awaited<ReturnType<ReturnType<typeof deps.ai>["reply"]>>;
@@ -292,12 +293,13 @@ export function createInboxRepository(deps: Deps): InboxRepository {
       }
 
       if (!result.ok) {
-        await handoff(userId, leadId, `A IA falhou (${result.error}). Responda você.`);
-        return { ok: true, outcome: "para_voce" };
+        const failure = `A IA falhou (${result.error}). Responda você.`;
+        await handoff(userId, leadId, failure);
+        return { ok: true, outcome: "para_voce", reason: failure };
       }
       if (result.action === "handoff") {
         await handoff(userId, leadId, result.reason);
-        return { ok: true, outcome: "para_voce" };
+        return { ok: true, outcome: "para_voce", reason: result.reason };
       }
 
       // Antes de enviar, confere de novo: você pode ter assumido, ou o contato pode ter pedido para sair.
@@ -308,7 +310,16 @@ export function createInboxRepository(deps: Deps): InboxRepository {
           return convo?.mode === "ia";
         }),
       ]);
-      if (!freshLead || freshLead.optOut || !freshLead.phone || !stillAi) return { ok: true, outcome: "para_voce" };
+      if (!freshLead || freshLead.optOut || !freshLead.phone || !stillAi) {
+        const why = !freshLead
+          ? "Lead não encontrado."
+          : freshLead.optOut
+            ? "O contato saiu da lista."
+            : !freshLead.phone
+              ? "O lead não tem telefone."
+              : "A conversa foi assumida por você enquanto a IA respondia.";
+        return { ok: true, outcome: "para_voce", reason: why };
+      }
 
       const sent = await deps
         .sender()
@@ -331,7 +342,8 @@ export function createInboxRepository(deps: Deps): InboxRepository {
           convo.handoffReason = `Não foi possível enviar a resposta da IA (${sent.error}). Responda você.`;
         }
       });
-      return { ok: true, outcome: sent.ok ? "ia_respondeu" : "para_voce" };
+      if (sent.ok) return { ok: true, outcome: "ia_respondeu" };
+      return { ok: true, outcome: "para_voce", reason: `Não foi possível enviar a resposta da IA (${sent.error}). Responda você.` };
     },
 
     async sendHuman(userId, leadId, rawText) {

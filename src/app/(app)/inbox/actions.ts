@@ -49,9 +49,9 @@ export async function simulateInboundAction(_prev: InboxFormState, formData: For
   const result = await getInboxRepository().receive(user.clientId, leadId, text(formData, "message"));
   refresh(leadId);
   if (!result.ok) return { error: result.error };
+  if (result.outcome === "para_voce") return { ok: `A conversa ficou para você responder. Motivo: ${result.reason}` };
   const labels = {
     ia_respondeu: "A IA respondeu.",
-    para_voce: "A conversa ficou para você responder.",
     saiu: "Pedido de saída registrado.",
     duplicada: "Mensagem repetida: ignorada.",
   } as const;
