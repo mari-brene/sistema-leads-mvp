@@ -15,6 +15,9 @@ import { handBackAction, takeOverAction } from "../actions";
 
 export const metadata: Metadata = { title: "Conversa" };
 
+/** A resposta da IA acontece numa ação desta página; 60 s evita que o servidor corte a conversa no meio. */
+export const maxDuration = 60;
+
 type PageProps = { params: Promise<{ leadId: string }> };
 
 const AUTHOR_LABEL = { contato: "Contato", ia: "IA", voce: "Você", sistema: "Sistema" } as const;
