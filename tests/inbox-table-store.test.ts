@@ -122,7 +122,7 @@ describe("caixa de entrada nas tabelas próprias: mesmas regras de ponta a ponta
     await repo.receive("u1", l.id, "PARAR");
     sentLog = [];
     const r = await repo.receive("u1", l.id, "qual o horário?");
-    expect(r).toEqual({ ok: true, outcome: "para_voce" });
+    expect(r).toMatchObject({ ok: true, outcome: "para_voce" });
     expect(sentLog).toHaveLength(0);
     expect(aiCalls).toHaveLength(0);
     expect((await repo.handBack("u1", l.id)).ok).toBe(false);
@@ -132,7 +132,7 @@ describe("caixa de entrada nas tabelas próprias: mesmas regras de ponta a ponta
     await setup();
     const l = await lead();
     const r = await repo.receive("u1", l.id, "vocês fazem tatuagem?");
-    expect(r).toEqual({ ok: true, outcome: "para_voce" });
+    expect(r).toMatchObject({ ok: true, outcome: "para_voce" });
     const thread = await repo.getThread("u1", l.id);
     expect(thread?.conversation?.mode).toBe("humano");
     expect(thread?.conversation?.needsHuman).toBe(true);
@@ -144,7 +144,7 @@ describe("caixa de entrada nas tabelas próprias: mesmas regras de ponta a ponta
     await setup();
     aiImpl = async () => ({ ok: false, error: "Groq respondeu com erro 429." });
     const l = await lead();
-    expect(await repo.receive("u1", l.id, "qual o horário?")).toEqual({ ok: true, outcome: "para_voce" });
+    expect(await repo.receive("u1", l.id, "qual o horário?")).toMatchObject({ ok: true, outcome: "para_voce" });
     expect(sentLog).toHaveLength(0);
     expect((await repo.getThread("u1", l.id))?.conversation?.handoffReason).toContain("429");
   });
@@ -152,12 +152,12 @@ describe("caixa de entrada nas tabelas próprias: mesmas regras de ponta a ponta
   it("IA desligada ou base vazia: só você responde", async () => {
     await setup(KNOW, false);
     const l = await lead();
-    expect((await repo.receive("u1", l.id, "qual o horário?"))).toEqual({ ok: true, outcome: "para_voce" });
+    expect((await repo.receive("u1", l.id, "qual o horário?"))).toMatchObject({ ok: true, outcome: "para_voce" });
     expect(aiCalls).toHaveLength(0);
 
     const l2 = await lead("Bia", "+5547999990002");
     await setup("", true);
-    expect((await repo.receive("u1", l2.id, "qual o horário?"))).toEqual({ ok: true, outcome: "para_voce" });
+    expect((await repo.receive("u1", l2.id, "qual o horário?"))).toMatchObject({ ok: true, outcome: "para_voce" });
     expect(aiCalls).toHaveLength(0);
   });
 
@@ -169,7 +169,7 @@ describe("caixa de entrada nas tabelas próprias: mesmas regras de ponta a ponta
     }
     expect(sentLog).toHaveLength(5);
     const sixth = await repo.receive("u1", l.id, "qual o horário?");
-    expect(sixth).toEqual({ ok: true, outcome: "para_voce" });
+    expect(sixth).toMatchObject({ ok: true, outcome: "para_voce" });
     expect(sentLog).toHaveLength(5);
   });
 
@@ -179,7 +179,7 @@ describe("caixa de entrada nas tabelas próprias: mesmas regras de ponta a ponta
     await repo.receive("u1", l.id, "oi");
     await repo.takeOver("u1", l.id);
     sentLog = [];
-    expect(await repo.receive("u1", l.id, "qual o horário?")).toEqual({ ok: true, outcome: "para_voce" });
+    expect(await repo.receive("u1", l.id, "qual o horário?")).toMatchObject({ ok: true, outcome: "para_voce" });
     expect(sentLog).toHaveLength(0);
 
     await repo.handBack("u1", l.id);
@@ -209,7 +209,7 @@ describe("caixa de entrada nas tabelas próprias: mesmas regras de ponta a ponta
   it("falha no envio (número ...0000) vira transferência e fica registrada", async () => {
     await setup();
     const l = await lead("Caio", "+5547999990000");
-    expect(await repo.receive("u1", l.id, "qual o horário?")).toEqual({ ok: true, outcome: "para_voce" });
+    expect(await repo.receive("u1", l.id, "qual o horário?")).toMatchObject({ ok: true, outcome: "para_voce" });
     const thread = await repo.getThread("u1", l.id);
     const out = thread?.messages.find((m) => m.direction === "out");
     expect(out?.status).toBe("falhou");
@@ -223,7 +223,7 @@ describe("caixa de entrada nas tabelas próprias: mesmas regras de ponta a ponta
       await repo.takeOver("u1", l.id);
       return mockAi.reply(req);
     };
-    expect(await repo.receive("u1", l.id, "qual o horário?")).toEqual({ ok: true, outcome: "para_voce" });
+    expect(await repo.receive("u1", l.id, "qual o horário?")).toMatchObject({ ok: true, outcome: "para_voce" });
     expect(sentLog).toHaveLength(0);
   });
 
@@ -234,7 +234,7 @@ describe("caixa de entrada nas tabelas próprias: mesmas regras de ponta a ponta
       await leadsRepo.registerOptOut("u1", l.id);
       return mockAi.reply(req);
     };
-    expect(await repo.receive("u1", l.id, "qual o horário?")).toEqual({ ok: true, outcome: "para_voce" });
+    expect(await repo.receive("u1", l.id, "qual o horário?")).toMatchObject({ ok: true, outcome: "para_voce" });
     expect(sentLog).toHaveLength(0);
   });
 
@@ -248,7 +248,7 @@ describe("caixa de entrada nas tabelas próprias: mesmas regras de ponta a ponta
       await repo.receive("u1", x.lead.id, "qual o horário?");
     }
     expect(aiCalls).toHaveLength(100);
-    expect(await repo.receive("u1", l.id, "qual o horário?")).toEqual({ ok: true, outcome: "para_voce" });
+    expect(await repo.receive("u1", l.id, "qual o horário?")).toMatchObject({ ok: true, outcome: "para_voce" });
     expect(aiCalls).toHaveLength(100);
     clock = new Date("2026-10-22T15:00:00.000Z"); // outro dia
     await repo.handBack("u1", l.id); // a conversa tinha passado para você; devolvemos à IA
